@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Plain host page. The ARGHBOX marker comment at the end of body becomes the widget script tag, see ../servers.mjs. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plain host page</title>
+  <style>
+    body { font: 16px/1.5 Georgia, serif; margin: 0; padding: 0 24px 80px; }
+    #host-header { position: sticky; top: 0; background: #eee; padding: 8px; }
+  </style>
+</head>
+<body>
+  <header id="host-header"><a id="host-link" href="#top">Host link</a> <button id="host-btn">Host button</button></header>
+  <main id="top">
+    <h1 id="host-title">Plain host page</h1>
+    <p>
+      <a id="open-link" href="#arghbox">Open feedback</a> |
+      <a id="bug-link" href="#arghbox-bug">Report a bug</a> |
+      <a id="add-link" href="#arghbox-add">Add an idea</a> |
+      <button id="api-open" onclick="ArghBox.open()">ArghBox.open()</button>
+    </p>
+    <input id="host-input" placeholder="host input">
+    <p>The quick brown fox jumps over the lazy dog, again and again, so the page is tall enough to scroll.</p>
+    <p>The quick brown fox jumps over the lazy dog, again and again, so the page is tall enough to scroll.</p>
+    <p>The quick brown fox jumps over the lazy dog, again and again, so the page is tall enough to scroll.</p>
+    <div style="height: 2400px; background: linear-gradient(#fff, #cde);">tall block</div>
+  </main>
+  <!--ARGHBOX-->
+</body>
+</html>

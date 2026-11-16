@@ -1,0 +1,228 @@
+name: Release
+
+# Publishes one version everywhere: a GitHub Release with the upload zip, the skill zip and the npm tarball
+# (each with a signed build provenance attestation), then the `arghbox` package on npmjs.com with npm
+# provenance, so `npm install arghbox` is traceable to this repository and this workflow run.
+# Never runs per commit.
+#
+# HOW TO RELEASE
+#   1. Set the new version in package.json, arghbox/VERSION and arghbox/lib/version.php, give it a dated
+#      "## [x.y.z] - YYYY-MM-DD" section in CHANGELOG.md, and merge to main. `npm test` checks they agree.
+#   2. Actions -> Release -> Run workflow -> tag "vx.y.z" -> Run. The tag is created at the selected branch's
+#      HEAD. Pushing a vx.y.z tag from a terminal works too.
+#   A version with a hyphen (v0.2.0-rc.1) becomes a GitHub pre-release and goes to npm under the "next"
+#   dist-tag, so `npm install arghbox` keeps giving the last stable version.
+#
+# ONE-TIME SETUP
+#   - The repository must be public: npm refuses provenance from private repositories.
+#   - npm auth, either way:
+#       a. a repository secret NPM_TOKEN: a granular access token from npmjs.com with read and write on
+#          packages (for the first publish, scope it to all packages; later, to arghbox only), or
+#       b. trusted publishing: on npmjs.com, arghbox -> Settings -> Trusted publisher -> GitHub Actions,
+#          organization BinaryBananaLLC, repository ArghBox, workflow release.yml. No secret needed; npm can
+#          only set this up once the package exists, so the first publish uses (a). Then delete NPM_TOKEN.
+#
+# Never create releases on the Releases page: this workflow creates the release as a draft, attaches every
+# file and only then publishes it, which also works when the repository uses immutable releases.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release, e.g. v0.1.0 (created at the selected branch's HEAD if it does not exist)
+        required: true
+
+permissions:
+  contents: read
+
+# Two releases at once would race for the same tag and the same npm version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check the version and run the tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      sha: ${{ steps.v.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        name: Resolve the tag and check it against package.json, npm and existing releases
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then TAG="$INPUT_TAG"; else TAG="$GITHUB_REF_NAME"; fi
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' must look like v1.2.3 or v1.2.3-rc.1 (with the leading v)."; exit 1
+          fi
+          VERSION="${TAG#v}"
+          # The commit to release: the tag's commit when the tag exists, otherwise the selected branch's HEAD.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            SHA="$(git rev-parse "refs/tags/$TAG^{commit}")"
+            git checkout -q "$SHA"
+          else
+            SHA="$GITHUB_SHA"
+          fi
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$VERSION" ]; then
+            echo "::error::package.json at ${SHA:0:7} says $PKG, the tag says $VERSION. Bump the version (package.json, arghbox/VERSION, arghbox/lib/version.php, CHANGELOG.md) and merge first."; exit 1
+          fi
+          if npm view "arghbox@$VERSION" version >/dev/null 2>&1; then
+            echo "::error::arghbox@$VERSION is already on npm. npm never reuses a version: release the next one."; exit 1
+          fi
+          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || echo none)" = "false" ]; then
+            echo "::error::A published release $TAG already exists. Release the next version instead."; exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then PRE=true; else PRE=false; fi
+          echo "Releasing $TAG from ${SHA:0:7} (pre-release: $PRE)"
+          { echo "tag=$TAG"; echo "version=$VERSION"; echo "prerelease=$PRE"; echo "sha=$SHA"; } >> "$GITHUB_OUTPUT"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, mbstring, curl, openssl
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check:size
+
+  build:
+    name: Build the release files
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # sign the attestations
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the zips and the npm tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Stamp every zip entry with the release commit's time, so a rebuild gives the same bytes.
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          npm run pack
+          npm pack --ignore-scripts --pack-destination dist
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -l dist
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/*.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: dist/
+          retention-days: 7
+
+  release:
+    name: GitHub Release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the tag and the release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: dist
+      - name: Create the release as a draft, attach the files, then publish it
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.check.outputs.tag }}
+          VERSION: ${{ needs.check.outputs.version }}
+          SHA: ${{ needs.check.outputs.sha }}
+          PRE: ${{ needs.check.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          # The release notes are this version's CHANGELOG section.
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          printf '\n---\n\nInstall with `npm install --save-dev arghbox@%s` and `npx arghbox install --public <your web root> --skill`, or download `arghbox-%s.zip` below and upload its `arghbox` folder. Every file has a build provenance attestation: `gh attestation verify <file> --repo %s`.\n' "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" >> notes.md
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" >/dev/null
+          fi
+          PREFLAG=""; if [ "$PRE" = "true" ]; then PREFLAG="--prerelease"; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # A draft left by an earlier failed run: refresh its files and notes.
+            gh release upload "$TAG" dist/* --clobber
+            gh release edit "$TAG" --notes-file notes.md --title "ArghBox $VERSION" $PREFLAG
+          else
+            gh release create "$TAG" dist/* --draft --verify-tag --title "ArghBox $VERSION" --notes-file notes.md $PREFLAG
+          fi
+          gh release edit "$TAG" --draft=false
+          echo "Published https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+
+  npm:
+    name: Publish to npm (provenance)
+    needs: [check, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # npm provenance, and trusted publishing when it is set up
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing (OIDC, no token) needs npm 11.5.1 or newer.
+      - run: npm install --global npm@11
+      - name: Publish
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PRE: ${{ needs.check.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NODE_AUTH_TOKEN" ]; then echo "No NPM_TOKEN secret: publishing through npm trusted publishing (see the setup notes at the top of this file)."; fi
+          TAGFLAG=""; if [ "$PRE" = "true" ]; then TAGFLAG="--tag next"; fi
+          npm publish --provenance --access public --ignore-scripts $TAGFLAG
+      - name: Check that the published package installs and runs
+        shell: bash
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd "$(mktemp -d)"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if out="$(npx --yes "arghbox@$VERSION" --version 2>/dev/null)" && [ "$out" = "$VERSION" ]; then
+              echo "npx arghbox@$VERSION --version -> $out"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::arghbox@$VERSION did not become installable from npm within 2 minutes."; exit 1

@@ -1,0 +1,85 @@
+[
+  {
+    "type": "idea", "title": "Dark mode for the widget",
+    "body": "My site goes dark at night and the feedback dialog glows like a hospital corridor. Please make it follow the theme.",
+    "state": "published", "status": "planned", "tags": ["design", "widget"], "votes": 41, "days_ago": 21, "status_days_ago": 6,
+    "comments": [{ "body": "Planned for the next release. It already follows prefers-color-scheme; we are adding a switch for sites with their own theme toggle.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Ping me on Slack when a new argh arrives",
+    "body": "I forget to open the admin page for weeks. A Slack message would save me from my own memory.",
+    "state": "published", "status": "in_progress", "tags": ["integrations", "notifications"], "votes": 27, "days_ago": 18, "status_days_ago": 3,
+    "comments": [{ "body": "Started. A single webhook URL in config.php, nothing else to install.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Export all entries to CSV",
+    "body": "For the quarterly report I paste everything into a spreadsheet by hand. A CSV button would make my accountant happy.",
+    "state": "published", "status": "planned", "tags": ["export", "admin"], "votes": 19, "days_ago": 16, "status_days_ago": 9
+  },
+  {
+    "type": "idea", "title": "Sync accepted ideas with GitHub issues",
+    "body": "When an idea is planned, open an issue in my repo and close it when the idea is marked done.",
+    "state": "published", "status": "open", "tags": ["integrations"], "votes": 23, "days_ago": 14
+  },
+  {
+    "type": "bug", "title": "The tab overlaps my chat bubble on mobile",
+    "body": "Bottom right on my phone there is a chat bubble and your tab sits on top of it. I can tap neither.",
+    "state": "published", "status": "done", "tags": ["mobile", "widget"], "votes": 14, "days_ago": 20, "status_days_ago": 8,
+    "comments": [{ "body": "Fixed. Use data-offset to move the tab up or down, or data-position=\"left\" to switch sides. Sorry about the pile-up.", "public": true }]
+  },
+  {
+    "type": "question", "title": "Does it work with a strict Content Security Policy?",
+    "body": "We send script-src 'self' on every page. Which hosts does the widget need?",
+    "state": "published", "status": "done", "tags": ["docs", "security"], "votes": 6, "days_ago": 19, "status_days_ago": 12,
+    "comments": [{ "body": "Yes. Allow your own origin for the scripts and challenges.cloudflare.com for Turnstile (script-src, frame-src and connect-src). The docs have a copy-paste policy.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Tryb ciemny",
+    "body": "Poproszę ciemny motyw okna opinii.",
+    "state": "merged", "merged_into": 0, "status": "open", "tags": ["design"], "votes": 5, "days_ago": 12
+  },
+  {
+    "type": "idea", "title": "Night theme please",
+    "body": "",
+    "state": "merged", "merged_into": 0, "status": "open", "tags": ["design"], "votes": 3, "days_ago": 10
+  },
+  {
+    "type": "idea", "title": "Install guide for Hugo and other static site generators",
+    "body": "I build my site with Hugo. Where exactly do I put the script tag so it survives a rebuild?",
+    "state": "published", "status": "open", "tags": ["docs"], "votes": 11, "days_ago": 9
+  },
+  {
+    "type": "bug", "title": "Vote button needs two taps on iPhone",
+    "body": "Safari on iOS. The first tap seems to just focus the button, the second one votes.",
+    "state": "published", "status": "in_progress", "tags": ["mobile", "widget"], "votes": 9, "days_ago": 7, "status_days_ago": 2,
+    "comments": [{ "body": "Reproduced on an iPhone SE. A fix is on its way, we are removing the hover state that causes it.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Let visitors attach a screenshot",
+    "body": "A picture is worth a thousand words, especially for layout bugs.",
+    "state": "published", "status": "declined", "tags": ["widget", "privacy"], "votes": 17, "days_ago": 15, "status_days_ago": 11,
+    "comments": [{ "body": "We keep ArghBox text-only on purpose: screenshots are the easiest way to collect personal data by accident. Instead every bug report carries the page path, browser and screen size.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "A weekly email digest of new arghs",
+    "body": "Not everything needs to ping me. One summary on Monday morning would be perfect.",
+    "state": "published", "status": "open", "tags": ["notifications"], "votes": 8, "days_ago": 5
+  },
+  {
+    "type": "idea", "title": "Polish translation of the dialog",
+    "body": "Moi klienci nie czytają po angielsku. Czy okno może mówić po polsku?",
+    "state": "published", "status": "done", "tags": ["i18n"], "votes": 12, "days_ago": 17, "status_days_ago": 4,
+    "comments": [{ "body": "Done. Set data-lang=\"pl\" or just let it follow your page language. More languages are one command away for the site owner.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Roadmap: where ArghBox goes after 0.1",
+    "body": "A short public list of what the team is working on, so you do not have to guess.",
+    "source": "owner", "state": "published", "status": "planned", "tags": ["roadmap"], "votes": 0, "days_ago": 4,
+    "comments": [{ "body": "Votes decide the order. Vote on what you need and we will start from the top.", "public": true }]
+  },
+  {
+    "type": "idea", "title": "Write the Hostinger install guide with screenshots",
+    "body": "Private note to self.",
+    "source": "owner", "state": "private", "status": "in_progress", "tags": ["docs"], "votes": 0, "days_ago": 3
+  }
+]

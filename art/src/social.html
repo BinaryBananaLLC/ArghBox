@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ArghBox social image</title>
+<!-- Template for art/social-github.png (1280x640) and art/brand/og-image.png (1200x630).
+     Rendered by tools/render-art.mjs; layout is fluid so both sizes share this file. -->
+<style>
+@font-face{font-family:"Lilita One";src:url("../fonts/LilitaOne-Regular.ttf")}
+@font-face{font-family:"Varela Round";src:url("../fonts/VarelaRound-Regular.ttf")}
+:root{--accent:#e8553d;--ink:#2b1d1a;--paper:#fff6e9;--yellow:#ffc83d;--soft:#ffe7c7;--mute:#7a6a63}
+*{box-sizing:border-box;margin:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{position:relative;background:radial-gradient(circle at 78% 52%,#ffe0b0 0,#ffeccf 38%,var(--paper) 75%);font-family:"Varela Round",sans-serif;color:var(--ink)}
+.dots{position:absolute;inset:0;background-image:radial-gradient(#f0d3a6 2.5px,transparent 3px);background-size:34px 34px;opacity:.55}
+.left{position:absolute;left:78px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:30px}
+.brand{display:flex;align-items:center;gap:16px}
+.brand img{width:134px;height:134px}
+.name{font:112px/1 "Lilita One";letter-spacing:.5px}
+.name b{color:var(--accent);font-weight:400}
+.tag{font-size:46px;line-height:1.2;font-weight:400;-webkit-text-stroke:.7px var(--ink)}
+.pill{align-self:flex-start;background:var(--ink);color:var(--paper);border-radius:99px;padding:10px 26px;font-size:25px}
+.widget{position:absolute;right:60px;top:50%;width:372px;transform:translateY(-50%) rotate(3deg)}
+.card{background:#fff;border:5px solid var(--ink);border-radius:30px;padding:26px 24px 24px;box-shadow:12px 14px 0 rgba(43,29,26,.16)}
+.card h3{font:34px "Lilita One";margin-bottom:16px}
+.item{display:flex;align-items:center;justify-content:space-between;border:4px solid var(--ink);border-radius:18px;padding:11px 12px 11px 18px;margin-bottom:12px;font-size:23px;white-space:nowrap;background:#fff}
+.item.hot{background:var(--yellow)}
+.vote{display:flex;align-items:center;gap:7px;border:3.5px solid var(--ink);border-radius:99px;background:var(--paper);padding:3px 13px 3px 10px;font:25px "Lilita One"}
+.vote i{width:0;height:0;border:9px solid transparent;border-bottom:15px solid var(--ink);border-top:0}
+.input{display:flex;align-items:center;justify-content:space-between;border:4px solid var(--ink);border-radius:18px;padding:9px 9px 9px 18px;color:var(--mute);font-size:23px;background:#fff}
+.input span{background:var(--accent);color:#fff;font:23px "Lilita One";border-radius:99px;padding:7px 20px;border:3.5px solid var(--ink)}
+.tab{position:absolute;right:-58px;top:50%;margin-top:-92px;width:58px;height:184px;background:var(--accent);border:5px solid var(--ink);border-left:0;border-radius:0 22px 22px 0;display:flex;align-items:center;justify-content:center}
+.tab span{writing-mode:vertical-rl;color:#fff;font:28px "Lilita One";letter-spacing:1px}
+</style></head><body>
+<div class="dots"></div>
+<div class="left">
+  <div class="brand"><img src="../logo-mark.svg" alt=""><div class="name">Argh<b>Box</b></div></div>
+  <div class="tag">The complaint box<br>your AI empties for you.</div>
+  <div class="pill">Open source &middot; MIT licensed</div>
+</div>
+<div class="widget">
+  <div class="card">
+    <h3>Feedback</h3>
+    <div class="item hot">Dark mode<div class="vote"><i></i>31</div></div>
+    <div class="item">Search is slow<div class="vote"><i></i>9</div></div>
+    <div class="item">Typo on pricing<div class="vote"><i></i>4</div></div>
+    <div class="input">Argh? Tell us.<span>Send</span></div>
+  </div>
+  <div class="tab"><span>Feedback</span></div>
+</div>
+</body></html>

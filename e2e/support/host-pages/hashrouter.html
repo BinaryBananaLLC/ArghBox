@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Host page with its own #hash router (#/home, #/settings). The widget must leave host routes alone. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hash router host page</title>
+  <style>
+    body { font: 16px/1.5 Georgia, serif; margin: 0; padding: 0 24px 80px; }
+    #cookie { position: fixed; left: 0; right: 0; bottom: 0; z-index: 99999; background: #333; color: #fff; padding: 12px; }
+  </style>
+</head>
+<body>
+  <nav><a id="to-home" href="#/home">Home</a> | <a id="to-settings" href="#/settings">Settings</a> | <a id="open-link" href="#arghbox">Open feedback</a></nav>
+  <h1 id="route">?</h1>
+  <p id="routes-seen"></p>
+  <div id="cookie">We use cookies. <button id="cookie-ok">OK</button></div>
+  <script>
+    var seen = [];
+    function render() {
+      var h = location.hash;
+      // like a real router: a hash it does not know is a "not found" page
+      document.getElementById('route').textContent = /^#\/(home|settings)$/.test(h) ? h.slice(2) : 'not found';
+      seen.push(h);
+      document.getElementById('routes-seen').textContent = seen.join(' ');
+    }
+    window.addEventListener('hashchange', render);
+    render();
+  </script>
+  <!--ARGHBOX-->
+</body>
+</html>

@@ -1,0 +1,80 @@
+{
+  "name": "arghbox",
+  "version": "0.1.0",
+  "description": "The complaint box your AI empties for you: a drop-in feedback widget with a PHP backend for shared hosting and AI triage by your own Claude Code.",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://arghbox.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BinaryBananaLLC/ArghBox.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BinaryBananaLLC/ArghBox/issues"
+  },
+  "funding": "https://arghbox.com/donate/",
+  "keywords": [
+    "feedback",
+    "feedback-widget",
+    "user-feedback",
+    "feature-requests",
+    "feature-voting",
+    "self-hosted",
+    "php",
+    "sqlite",
+    "shared-hosting",
+    "cloudflare-turnstile",
+    "claude-code",
+    "mcp-server",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "arghbox": "bin/arghbox.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "arghbox/",
+    "!arghbox/config.php",
+    "!arghbox/**/*.sqlite*",
+    "!arghbox/i18n/.translate-state.json",
+    "!arghbox/data/*",
+    "arghbox/data/.htaccess",
+    "arghbox/data/index.html",
+    "skill/arghbox-triage/",
+    "bin/",
+    "tools/install.mjs",
+    "tools/new-secrets.mjs",
+    "index.mjs",
+    "index.d.ts",
+    "CHANGELOG.md",
+    "!**/*.bak",
+    "!**/*.log"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "dev": "node tools/dev.mjs --seed",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run check:size && npm run test:e2e",
+    "check:size": "node tools/check-size.mjs",
+    "pack": "node tools/pack.mjs",
+    "capture": "node tools/capture.mjs",
+    "install-into": "node tools/install.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- Dark-capable host page: html.dark or html[data-theme=dark] (for data-theme=host). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dark host page</title>
+  <style>
+    body { font: 16px/1.5 Georgia, serif; margin: 0; padding: 0 24px 80px; background: #fff; color: #111; }
+    html.dark body, html[data-theme=dark] body { background: #111; color: #eee; }
+    #host-header { position: sticky; top: 0; background: #888; padding: 8px; }
+  </style>
+</head>
+<body>
+  <header id="host-header"><a id="host-link" href="#top">Host link</a> <button id="host-btn">Host button</button></header>
+  <main id="top">
+    <h1 id="host-title">Dark host page</h1>
+    <p>
+      <a id="open-link" href="#arghbox">Open feedback</a> |
+      <button id="toggle-dark" onclick="document.documentElement.classList.toggle('dark')">Toggle html.dark</button>
+      <button id="toggle-attr" onclick="var h=document.documentElement;h.getAttribute('data-theme')==='dark'?h.removeAttribute('data-theme'):h.setAttribute('data-theme','dark')">Toggle data-theme</button>
+    </p>
+    <div style="height: 2400px">tall block</div>
+  </main>
+  <!--ARGHBOX-->
+</body>
+</html>

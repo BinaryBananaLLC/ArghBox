@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Nonce-only Content-Security-Policy host: every script needs the nonce, the loader passes it on. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'nonce-n0nc3-abc'; style-src 'self'; connect-src 'self'; frame-src https://challenges.cloudflare.com">
+  <title>Nonce CSP host page</title>
+</head>
+<body>
+  <h1 id="host-title">Nonce CSP host page</h1>
+  <script nonce="n0nc3-abc" src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Trusted Types host: only a policy named arghbox may exist; innerHTML and script URLs must go through it. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types arghbox">
+  <title>Trusted Types host page</title>
+</head>
+<body>
+  <h1 id="host-title">Trusted Types host page</h1>
+  <script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+</body>
+</html>

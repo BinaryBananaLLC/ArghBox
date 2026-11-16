@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Hostile host page: global CSS that would wreck a naive widget. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hostile host page</title>
+  <style>
+    html { font-size: 10px !important; }
+    * { all: unset; }
+    html, body, div, p, h1, h2, h3, header, main, ul, li { display: block; }
+    div { display: flex !important; font-size: 40px !important; color: lime !important; letter-spacing: 6px !important; line-height: 3 !important; text-transform: uppercase !important; margin: 20px !important; padding: 20px !important; border: 5px solid hotpink !important; }
+    button { background: red !important; color: yellow !important; border: 4px dotted blue !important; font-size: 30px !important; padding: 20px !important; }
+    input, textarea, a, span, p, h2, h3, li, label, svg { font-size: 30px !important; color: red !important; }
+    svg { display: none !important; }
+    body { font: 16px/1.5 Georgia, serif; margin: 0; padding: 0 24px 80px; display: block; }
+    #host-header { position: sticky; top: 0; z-index: 2147482999; background: #fcc; padding: 8px; display: block; }
+    #host-header * { display: inline; }
+  </style>
+</head>
+<body>
+  <header id="host-header"><a id="host-link" href="#top">Host link</a> <button id="host-btn">Host button</button></header>
+  <main id="top">
+    <h1 id="host-title">Hostile host page</h1>
+    <p><a id="open-link" href="#arghbox">Open feedback</a></p>
+    <input id="host-input" placeholder="host input">
+    <section id="tall" style="display:block;height:2400px">tall block</section>
+  </main>
+  <!--ARGHBOX-->
+</body>
+</html>

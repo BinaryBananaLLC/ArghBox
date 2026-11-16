@@ -1,0 +1,28 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Secrets and private data: never commit
+config.php
+.secrets/
+.arghbox/
+.dev/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+arghbox/data/*
+!arghbox/data/.htaccess
+!arghbox/data/index.html
+
+# Test output
+test-results/
+test-results-*/
+playwright-report/
+playwright-report-*/
+blob-report/
+
+# Scratch
+temp/
+.DS_Store
+Thumbs.db

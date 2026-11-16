@@ -1,0 +1,15 @@
+<!doctype html>
+<!-- Strict Content-Security-Policy host: no inline script or style, only same-origin plus Turnstile. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com">
+  <title>Strict CSP host page</title>
+</head>
+<body>
+  <h1 id="host-title">Strict CSP host page</h1>
+  <p><a id="open-link" href="#arghbox">Open feedback</a></p>
+  <script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+</body>
+</html>

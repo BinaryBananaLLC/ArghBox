@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pocket Maps - tiny map tools</title>
+<meta name="description" content="Pocket Maps makes tiny map tools: drop pins, draw routes, share a link. This is the ArghBox demo page.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/art/brand/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/art/brand/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/art/brand/apple-touch-icon.png">
+<link rel="manifest" href="/art/brand/site.webmanifest">
+<link rel="stylesheet" href="/demo.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/art/brand/favicon-32.png" width="30" height="30" alt="">Pocket Maps</a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#feedback">Feedback</a>
+      <a href="#faq">FAQ</a>
+      <a href="/arghbox/admin/">Admin</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>Tiny map tools for people who just need a pin.</h1>
+        <p class="lead">Drop pins, draw a route, share a link. No account, no tracking, no 40 MB app. Pocket Maps is a made-up site that shows how ArghBox looks on a real page.</p>
+        <div class="actions">
+          <a class="btn" href="#features">See what it does</a>
+          <a class="btn ghost" href="#arghbox">Give feedback</a>
+        </div>
+      </div>
+      <svg class="map" viewBox="0 0 400 300" role="img" aria-label="A small illustrated map with three pins">
+        <rect class="land" width="400" height="300"/>
+        <path class="water" d="M0 210 C60 190 110 240 170 225 S300 200 400 235 L400 300 L0 300Z"/>
+        <path class="road" d="M-10 110 C80 90 140 140 230 120 S340 60 410 80"/>
+        <path class="road small" d="M120 0 C130 80 110 150 150 215"/>
+        <path class="road small" d="M300 0 C280 60 300 110 270 170"/>
+        <g class="pin"><path d="M90 98c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36S90 112 90 98z"/><circle cx="108" cy="97" r="6" fill="var(--land)"/></g>
+        <g class="pin"><path d="M230 112c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36s-18-22-18-36z"/><circle cx="248" cy="111" r="6" fill="var(--land)"/></g>
+        <g class="pin"><path d="M300 170c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36s-18-22-18-36z"/><circle cx="318" cy="169" r="6" fill="var(--land)"/></g>
+      </svg>
+    </div>
+
+    <div class="features" id="features">
+      <div class="card"><h2>Drop a pin</h2><p>Tap the map, name the place, copy the link. Friends see exactly the spot you meant.</p></div>
+      <div class="card"><h2>Draw a route</h2><p>Click a few points and get the distance and a rough walking time. Great for a Sunday loop.</p></div>
+      <div class="card"><h2>Works offline</h2><p>Save an area before you leave. Your pins stay on your device, not on our servers.</p></div>
+    </div>
+
+    <section class="block" id="feedback">
+      <h2>Tell us what bugs you</h2>
+      <p>This page has the <strong>Feedback</strong> tab on its right edge. Click it to see the public list, vote on ideas, or add your own. Everything here is demo data.</p>
+      <div class="demo-links">
+        <strong>Try the ways to open it</strong>
+        <ul>
+          <li><a href="#arghbox">Open the feedback box</a> (<code>#arghbox</code> link)</li>
+          <li><a href="#arghbox-bug">Report a bug</a> (<code>#arghbox-bug</code> link, starts on a bug)</li>
+          <li><a href="#arghbox-add">Add a new idea</a> (<code>#arghbox-add</code> link)</li>
+          <li><button class="btn ghost" type="button" id="open-api">Open from JavaScript</button> (<code>ArghBox.open()</code>)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="block faq" id="faq">
+      <h2>Questions</h2>
+      <details><summary>Is Pocket Maps a real product?</summary><p>No. It is a pretend site so the ArghBox widget has something realistic to sit on.</p></details>
+      <details><summary>Where does the feedback go?</summary><p>Into a SQLite file on this dev server. In production, you triage it with your own AI assistant.</p></details>
+      <details><summary>Do I need an account to vote?</summary><p>No. A tiny Turnstile check keeps bots out and nobody has to sign in.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="grow">Pocket Maps, a fictional site. Feedback by <a href="https://github.com/BinaryBananaLLC/ArghBox" rel="noopener">ArghBox</a>.</div>
+    <a href="/arghbox/api.php?action=feed">Atom feed</a>
+    <a href="/arghbox/admin/">Admin page</a>
+  </div>
+</footer>
+
+<script>
+document.getElementById('open-api').addEventListener('click', function () {
+  if (window.ArghBox) window.ArghBox.open({ type: 'idea', view: 'list' });
+});
+</script>
+<script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+# ArghBox (Apache and LiteSpeed)
+Options -Indexes
+
+# Keep the Authorization header for the admin API (some PHP setups strip it).
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
+
+# Never serve configuration (config.php and anything named config.*), the version file, database files,
+# backup and editor leftovers (config.php.bak, notes.swp, ...) or dotfiles other than .htaccess.
+<FilesMatch "(^config.*|^VERSION$|\.sqlite|\.(bak|old|orig|save|swp|swo|tmp|dist)$|~$|^\.(?!htaccess$|well-known))">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Scripts and JSON are UTF-8: do not let the host page's charset decide how they are decoded.
+<IfModule mod_mime.c>
+  AddType application/json .json
+  AddCharset utf-8 .js .json
+</IfModule>
+
+# Static assets: one hour. Host pages bust the cache with ?v=<version>.
+<IfModule mod_headers.c>
+  <FilesMatch "^(arghbox|arghbox-app)\.js$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+  <FilesMatch "\.json$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+</IfModule>
+# api.php and admin/index.php send their own Cache-Control: no-store headers.
+# lib/ and data/ are denied by their own .htaccess files.
+# Note: OpenLiteSpeed and nginx ignore .htaccess. Keep config.php and the data folder ABOVE the web root
+# (arghbox-private/) and add equivalent deny rules, see docs/install.md.
