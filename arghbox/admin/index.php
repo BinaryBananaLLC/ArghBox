@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 // ArghBox admin page shell. No secrets and no logic: headers plus the HTML skeleton.
 // Everything else is rendered by admin.js from the admin API (../api.php).
-header('Cache-Control: no-store');
+// no-transform: proxies must not rewrite this page. It stops Cloudflare from injecting its Web
+// Analytics beacon, which the CSP below would block (a console error on every admin page load).
+header('Cache-Control: no-store, no-transform');
 header('X-Frame-Options: DENY');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');

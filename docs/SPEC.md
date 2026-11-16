@@ -689,7 +689,8 @@ fall back to `.other`, then to English. `_meta` key holds `{lang, name, version}
 
 ## 9. Admin page (`/arghbox/admin/`)
 
-- `admin/index.php` sends `Cache-Control: no-store`, `X-Frame-Options: DENY`,
+- `admin/index.php` sends `Cache-Control: no-store, no-transform` (so proxies such as Cloudflare
+  do not inject scripts, like the Web Analytics beacon, that the CSP would block), `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer`, and `Content-Security-Policy: default-src 'self'; script-src
   'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';
   base-uri 'none'; form-action 'self'`, and `<meta name="robots" content="noindex">`.

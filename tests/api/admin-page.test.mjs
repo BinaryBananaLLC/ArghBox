@@ -13,6 +13,7 @@ test('admin page: security headers, noindex, no inline script or style, relative
     const h = res.headers;
     assert.match(h.get('content-type'), /text\/html/);
     assert.match(h.get('cache-control'), /no-store/);
+    assert.match(h.get('cache-control'), /no-transform/); // keeps Cloudflare from injecting its beacon
     assert.equal(h.get('x-frame-options'), 'DENY');
     assert.equal(h.get('referrer-policy'), 'no-referrer');
     assert.equal(h.get('content-security-policy'),
