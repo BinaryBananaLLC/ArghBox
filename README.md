@@ -203,7 +203,7 @@ Ideas for v2, in no strict order: webhooks, importers from other tools, a roadma
 
 ## Contributing and support
 
-Bug reports, ideas and questions go to the Feedback tab on [arghbox.com](https://arghbox.com/), where ArghBox collects its own feedback. Pull requests are welcome here, see [CONTRIBUTING.md](CONTRIBUTING.md). Before a large change, please post the idea on the board first. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Report bugs as [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose). Ideas and questions go to the Feedback tab on [arghbox.com](https://arghbox.com/), where ArghBox collects its own feedback. Pull requests are welcome here, see [CONTRIBUTING.md](CONTRIBUTING.md). Before a large change, please post the idea on the board first. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ArghBox is free and always will be. If it saves you time, you can [chip in a coffee](https://arghbox.com/donate/). It helps keep the project going, and it is never expected.
 

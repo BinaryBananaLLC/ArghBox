@@ -1,6 +1,6 @@
 # Contributing to ArghBox
 
-Thanks for helping. Send bug reports, ideas and questions with the Feedback tab on [arghbox.com](https://arghbox.com/), where ArghBox collects its own feedback. Code, docs fixes and translations come here as pull requests. For anything bigger than a small fix, please post the idea on the board first so we can agree on the approach before you spend your time. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Thanks for helping. Report bugs as [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose). Send ideas and questions with the Feedback tab on [arghbox.com](https://arghbox.com/), where ArghBox collects its own feedback. Code, docs fixes and translations come here as pull requests. For anything bigger than a small fix, please post the idea on the board first so we can agree on the approach before you spend your time. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Setup
 

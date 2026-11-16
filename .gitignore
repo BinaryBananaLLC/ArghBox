@@ -4,6 +4,8 @@ dist/
 
 # Secrets and private data: never commit
 config.php
+# ...except the config loader, which is source code, not a config file.
+!arghbox/lib/config.php
 .secrets/
 .arghbox/
 .dev/

@@ -231,4 +231,4 @@ Start with the health check (step 5) and `arghbox-private/error.log`. Then find 
 | Everyone shares one rate limit ("too many" for new visitors) | You are behind a CDN or proxy and `trusted_ip_header` is empty | See step 7 |
 | After an upgrade visitors still get the old widget | Browsers cached `arghbox.js` | Change `?v=` in the script tag (see Upgrading) |
 
-Still stuck? Send a bug report with the Feedback tab on [arghbox.com](https://arghbox.com/#arghbox-bug). Mention your ArghBox and PHP versions and your host, and paste the output of the health check (it contains no secrets).
+Still stuck? [Open a bug report](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose) on GitHub. Mention your ArghBox and PHP versions and your host, and paste the output of the health check (it contains no secrets).
