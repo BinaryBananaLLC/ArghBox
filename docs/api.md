@@ -97,7 +97,7 @@ An Atom 1.0 feed (`application/atom+xml`), cached for 10 minutes: the 50 most re
 | `config_location` | `"env"`, `"private"` or `"local"` |
 | `data_dir_warning` | a sentence when the data folder's parent looks like a web root (named `public_html`, `www`, `htdocs`, `html`, or holding an `index.php` / `index.html`), else `null` |
 | `turnstile_test_keys` | `true` when the Turnstile secret is one of Cloudflare's test secrets (every visitor passes) |
-| `warnings` | a list of sentences: the data folder warning, the test keys warning, and the proxy-header warning (the header is ignored because this request did not come from a Cloudflare address or a trusted proxy) |
+| `warnings` | a list of sentences: the data folder warning, the test keys warning, and the proxy-header warning (the header is ignored because this request did not come from a Cloudflare address or a trusted proxy, and the web server had not already put the visitor's address in `REMOTE_ADDR`) |
 
 Example: `curl -H "Authorization: Bearer <triage token>" "https://example.com/arghbox/api.php?action=health"`.
 

@@ -2,6 +2,8 @@
 
 Logo, icons, social images and diagrams. All art is MIT licensed like the rest of the project. The fonts used for rendering keep their own licence (SIL OFL 1.1, see below).
 
+The ArghBox name and logo are also trademarks of BinaryBanana LLC. The MIT licence covers these files. It does not let you use the logo as the logo of your own product or of a renamed fork. Using it to point at ArghBox is fine. See [TRADEMARKS.md](../TRADEMARKS.md).
+
 The mark: a friendly complaint box with a slot on top and a yellow "argh" burst popping out of it.
 
 ## Files

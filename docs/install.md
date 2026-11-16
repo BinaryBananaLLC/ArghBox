@@ -180,6 +180,8 @@ If your domain uses Cloudflare's proxy (the orange cloud), Hostinger's CDN or an
 
 Hostinger's own CDN uses `'HTTP_X_REAL_IP'`. Then open the health check: `ip_header` should say `"present"`. Only set a header your host or CDN really sets, because a visitor could fake any other one.
 
+Some web servers already put the visitor's address in place of Cloudflare's before ArghBox runs. LiteSpeed on Hostinger does this, and only for requests that really come from Cloudflare. ArghBox notices and uses that address, so the health check shows `"present"` with no proxy warning. Keep the setting above anyway: it is what tells ArghBox the site sits behind Cloudflare.
+
 **No caching of the API.** `/arghbox/api.php`, `/arghbox/mcp.php` and `/arghbox/admin/` must never come from a cache: a cached `list` shows visitors old votes, and a cached admin answer can be someone else's. They send `Cache-Control: no-store` themselves, and CDNs normally respect that, but a "cache everything" page rule, a host-level page cache or a caching plugin may not. Check it twice:
 
 ```

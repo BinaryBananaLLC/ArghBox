@@ -331,6 +331,12 @@ describe('4. client IP keying', () => {
       assert.equal(warn.json.ip_header, 'present');
       assert.match(warn.json.warnings.join(' '), /Cloudflare/);
       assert.equal((await box.call('health', { headers: { 'CF-Connecting-IP': '198.51.100.3' } })).json.ip_header, 'configured');
+      // the web server already put the visitor in REMOTE_ADDR (LiteSpeed on Hostinger behind Cloudflare): no false warning
+      const resolved = await box.call('health', { token: box.ownerToken, headers: { 'CF-Connecting-IP': '127.0.0.1' } });
+      assert.equal(resolved.json.ip_header, 'present');
+      assert.doesNotMatch(resolved.json.warnings.join(' '), /Cloudflare/);
+      const xff = await box.call('health', { token: box.ownerToken, headers: { 'CF-Connecting-IP': '198.51.100.9, 127.0.0.1' } });
+      assert.doesNotMatch(xff.json.warnings.join(' '), /Cloudflare/, 'the right-most entry is what counts');
     } finally {
       await box.stop();
     }

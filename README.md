@@ -16,7 +16,7 @@
 
 </div>
 
-ArghBox is an open-source feedback widget for small websites. Visitors click a **Feedback** tab on the edge of the page, upvote the ideas and bugs other people already posted, or add their own, with no sign-in. Spam is stopped by Cloudflare Turnstile. The backend is PHP and SQLite in one folder that you upload to ordinary shared hosting. And you never sort the pile by hand: a skill for your own [Claude Code](https://claude.com/claude-code) rejects spam, merges duplicates, tags the rest and tells you what needs you. ArghBox itself makes no paid AI calls.
+ArghBox™ is an open-source feedback widget for small websites. Visitors click a **Feedback** tab on the edge of the page, upvote the ideas and bugs other people already posted, or add their own, with no sign-in. Spam is stopped by Cloudflare Turnstile. The backend is PHP and SQLite in one folder that you upload to ordinary shared hosting. And you never sort the pile by hand: a skill for your own [Claude Code](https://claude.com/claude-code) rejects spam, merges duplicates, tags the rest and tells you what needs you. ArghBox itself makes no paid AI calls.
 
 <table>
   <tr>
@@ -210,6 +210,8 @@ ArghBox is free and always will be. If it saves you time, you can [chip in a cof
 ## Licence
 
 [MIT](LICENSE). The lettering fonts keep their own SIL OFL licence, see [art/README.md](art/README.md).
+
+ArghBox™ and the ArghBox logo are trademarks of BinaryBanana LLC. The MIT licence covers the code, not the name. Run it, change it and fork it freely, but give a changed version that you publish its own name. [TRADEMARKS.md](TRADEMARKS.md) says what is fine without asking.
 
 ArghBox is not affiliated with any other product named here.
 

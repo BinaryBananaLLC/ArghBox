@@ -143,6 +143,19 @@ function ab_ip_hash(): string
     return $h;
 }
 
+/**
+ * True when the web server already put the visitor's address in REMOTE_ADDR: the header's right-most
+ * entry is REMOTE_ADDR itself. LiteSpeed on Hostinger does this behind Cloudflare (it honours the header
+ * only from Cloudflare's addresses), so ab_client_ip() falls back to REMOTE_ADDR, which is already the
+ * real visitor, and there is nothing to warn about. Only the health warning uses this, never the IP itself.
+ */
+function ab_ip_resolved_by_server(string $raw, string $remote): bool
+{
+    $parts = explode(',', $raw);
+    $last = ab_ip_canonical((string)end($parts));
+    return $last !== null && $last === $remote;
+}
+
 /** State of the proxy header setting, for authenticated health checks. */
 function ab_ip_header_status(): array
 {
@@ -151,9 +164,10 @@ function ab_ip_header_status(): array
         return ['state' => 'not_configured', 'warning' => null];
     }
     $remote = ab_ip_canonical((string)($_SERVER['REMOTE_ADDR'] ?? '')) ?? '0.0.0.0';
-    $present = ((string)($_SERVER[$cfg['trusted_ip_header']] ?? '')) !== '';
+    $raw = (string)($_SERVER[$cfg['trusted_ip_header']] ?? '');
+    $present = $raw !== '';
     $warning = null;
-    if (!ab_ip_header_trusted($cfg, $remote)) {
+    if (!ab_ip_header_trusted($cfg, $remote) && !ab_ip_resolved_by_server($raw, $remote)) {
         $warning = $cfg['trusted_ip_header'] === 'HTTP_CF_CONNECTING_IP'
             ? 'This request did not come from a Cloudflare address, so the Cloudflare header is ignored. If you use Cloudflare, check that the site is proxied; behind another proxy list its addresses in trusted_proxies.'
             : 'This request did not come from a trusted proxy, so the header is ignored. Check trusted_proxies.';
