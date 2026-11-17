@@ -263,7 +263,7 @@ test('caching: the API is never cached, the feed for 10 minutes, and .htaccess c
   expect(feed.headers()['cache-control']).toMatch(/max-age=\d+/)
   // php -S (the dev router) serves static files with no-cache, so the Apache rules are checked in the file itself.
   const htaccess = fs.readFileSync(path.join(REPO, 'arghbox', '.htaccess'), 'utf8')
-  expect(htaccess).toContain('"^(arghbox|arghbox-app)\\.js$"')
+  expect(htaccess).toContain('"^(arghbox|arghbox-app|app-page)\\.js$"')
   expect(htaccess).toContain('"\\.json$"')
   expect(htaccess.match(/max-age=3600/g)).toHaveLength(2)
 })
@@ -296,4 +296,15 @@ test('the demo page links to the admin page and the Atom feed, and both answer',
   for (const href of ['/arghbox/admin/', '/arghbox/api.php?action=feed']) {
     expect((await page.request.get(stack.siteUrl + href)).status()).toBe(200)
   }
+})
+
+test('the demo page links to the mobile app page, which opens the box full screen with the real API', async ({ page, stack }) => {
+  await page.goto(stack.siteUrl + '/')
+  const link = page.locator('#app-page-link')
+  await expect(link).toHaveAttribute('href', '/arghbox/app.html?platform=ios&version=1.0.0')
+  await link.click()
+  await expect(page).toHaveURL(/\/arghbox\/app\.html\?platform=ios&version=1\.0\.0/)
+  await expect(page.locator('#arghbox-root .panel h2')).toBeVisible()
+  await expect(page.locator('#arghbox-root .card').first()).toBeVisible()
+  await expect(page.locator('#arghbox-root .tw')).toBeHidden()
 })

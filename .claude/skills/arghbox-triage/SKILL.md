@@ -1,6 +1,6 @@
 ---
 name: arghbox-triage
-description: Empty the ArghBox feedback box of arghbox.com (or the local dev server). Triage pending feedback entries: publish real ones, reject spam, merge duplicates, flag what needs the owner. Use when the user asks to "empty the ArghBox", "triage feedback", "review the feedback box", "triage the ArghBox" or "AI-review feedback".
+description: Empty the ArghBox feedback box of arghbox.com (or the local dev server). Triage pending feedback entries and entries visitors reported: publish real ones, reject spam, merge duplicates, flag what needs the owner, keep or reject reported entries. Use when the user asks to "empty the ArghBox", "triage feedback", "review the feedback box", "triage the ArghBox" or "AI-review feedback".
 ---
 
 Follow `skill/arghbox-triage/PROMPT.md` step by step; the judging rules are in

@@ -14,6 +14,8 @@
   var STATUSES = { open: 'Open', planned: 'Planned', in_progress: 'In progress', done: 'Done', declined: 'Declined' };
   var STATES = { pending: 'Pending', flagged: 'Flagged', published: 'Published', rejected: 'Rejected', merged: 'Merged', private: 'Private' };
   var REASONS = { spam: 'Spam', abuse: 'Abuse', off_topic: 'Off topic', test: 'Test', unclear: 'Unclear', other: 'Other' };
+  var REPORT_REASONS = { spam: 'spam', abusive: 'rude', off_topic: 'off topic', other: 'other' };
+  var APP_PLATFORMS = { ios: 'iOS', android: 'Android', other: '' };
   var TAG_RE = /^[a-z0-9][a-z0-9-]{1,23}$/;
   var PAGE = 25;
 
@@ -267,6 +269,10 @@
     if (c.browser) bits.push(c.browser);
     if (c.os) bits.push(c.os);
     if (c.screen) bits.push(c.screen + ' screen');
+    if (c.app && typeof c.app === 'object') {
+      var app = [APP_PLATFORMS[c.app.platform] !== undefined ? APP_PLATFORMS[c.app.platform] : String(c.app.platform || ''), c.app.version ? String(c.app.version) : ''].filter(Boolean).join(' ');
+      bits.push('App' + (app ? ': ' + app : ''));
+    }
     return bits.join(' · ');
   }
 
@@ -345,6 +351,8 @@
           entry.state === 'rejected' && entry.reject_reason ? chip(REASONS[entry.reject_reason] || entry.reject_reason, 'bad') : null,
           entry.state !== 'private' ? chip(plural(entry.votes, 'vote'), 'votes') : null,
           (entry.tags || []).map(function (t) { return chip('#' + t, 'tag'); }),
+          entry.reports && entry.reports.open > 0 ? chip('Reported ' + entry.reports.open, 'bad', 'Open reports from visitors') : null,
+          entry.author_blocked ? chip('Author blocked', 'bad', 'This author is blocked for now.') : null,
           entry.ai && !entry.ai.applied ? chip('needs you', 'flag', 'The AI was not confident enough to apply its decision.') : null,
           h('span', { class: 'when' }, time(entry.created_at))));
     }
@@ -359,8 +367,10 @@
           entry.body ? h('p', { class: 'pre', text: entry.body }) : h('p', { class: 'muted', text: 'No details.' })),
         originalsEl(),
         aliasesEl(),
+        reportsEl(),
         aiEl(),
         S.readOnly ? null : actionsEl(),
+        S.readOnly ? null : authorEl(),
         notice,
         S.readOnly ? null : mergeEl(),
         S.readOnly ? null : editEl(),
@@ -417,6 +427,60 @@
         a.reason ? h('p', { class: 'pre', text: a.reason }) : null,
         a.title_en ? h('p', null, h('em', { text: 'English: ' }), a.title_en) : null,
         h('p', { class: 'muted small' }, 'Reviewer ' + (a.reviewer || 'unknown') + (a.run_id ? ', run #' + a.run_id : '') + ', ', time(a.at)));
+    }
+
+    function reportsEl() {
+      var r = entry.reports;
+      if (!r || !(r.open > 0)) return null;
+      var parts = Object.keys(REPORT_REASONS).filter(function (k) { return r.reasons && r.reasons[k] > 0; })
+        .map(function (k) { return REPORT_REASONS[k] + ' ' + r.reasons[k]; });
+      var box = h('section', { class: 'reports', 'aria-label': 'Reports' },
+        h('p', null, h('strong', { class: 'reports-line', text: 'Reported by ' + plural(r.open, 'person', 'people') + (parts.length ? ': ' + parts.join(', ') : '') })),
+        r.last_at ? h('p', { class: 'muted small' }, 'Last report ', time(r.last_at)) : null,
+        entry.state === 'pending' ? h('p', { class: 'reports-hidden', text: 'Hidden after reports. It is not on the public board until you put it back or reject it.' }) : null);
+      if (!S.readOnly && entry.state !== 'merged') {
+        box.appendChild(h('div', { class: 'row' },
+          entry.state === 'pending'
+            ? button('Put it back (dismiss reports)', function () {
+              update('Put it back', { state: 'published' }, 'Put back on the board. Reports dismissed.');
+            }, 'primary')
+            : button('Keep it (dismiss reports)', function () {
+              run('Keep it', 'admin.dismiss_reports', { id: entry.id }, 'Reports dismissed.');
+            }, 'primary')));
+      }
+      return box;
+    }
+
+    function authorEl() {
+      if (entry.source === 'owner') return null;
+      var row = h('div', { class: 'author-block' });
+      if (entry.author_blocked) {
+        row.appendChild(h('p', { class: 'muted small', text: 'This author is blocked. New posts from them are rejected quietly and their reports are ignored.' }));
+        row.appendChild(button('Unblock author', function () { run('Unblock author', 'admin.unblock', { id: entry.id }, 'Author unblocked.'); }));
+        return row;
+      }
+      var confirmBox = h('div', { class: 'confirm', role: 'alertdialog', 'aria-labelledby': 'block-q-' + entry.id, hidden: true });
+      var ask = button('Block author', function () { openConfirm(); }, 'danger');
+      var closeConfirm = function () { confirmBox.hidden = true; clear(confirmBox); ask.hidden = false; ask.focus(); };
+      var openConfirm = function () {
+        ask.hidden = true;
+        confirmBox.hidden = false;
+        var note = h('input', { type: 'text', maxlength: '500', 'aria-label': 'Note about the block (optional, only you see it)', placeholder: 'Note (optional, only you see it)', autocomplete: 'off' });
+        var yes = button('Yes, block this author', function () {
+          var payload = { id: entry.id };
+          if (note.value.trim()) payload.note = note.value.trim();
+          run('Block author', 'admin.block', payload, 'Author blocked.');
+        }, 'danger small');
+        var no = button('Cancel', closeConfirm, 'small');
+        fill(confirmBox,
+          h('p', { id: 'block-q-' + entry.id, text: 'Block the author of #' + entry.id + '? Their new posts are rejected without a word and their reports are ignored. It lasts 90 days by default and you can undo it.' }),
+          note, h('div', { class: 'row' }, yes, no));
+        confirmBox.onkeydown = function (ev) { if (ev.key === 'Escape') { ev.stopPropagation(); closeConfirm(); } };
+        no.focus();
+      };
+      row.appendChild(ask);
+      row.appendChild(confirmBox);
+      return row;
     }
 
     function actionsEl() {
@@ -627,7 +691,7 @@
       }
       ul.appendChild(h('li', { class: 'action' + (a.undone_by ? ' undone' : ''), 'data-action': a.id },
         h('div', { class: 'action-main' },
-          h('span', { class: 'chip kind', text: a.kind }),
+          h('span', { class: 'chip kind', 'data-kind': a.kind, text: kindLabel(a.kind) }),
           h('span', { class: 'action-summary', text: a.summary }),
           compact ? null : h('span', { class: 'action-entry' }, ' ', h('span', { class: 'entry-id', text: '#' + a.entry_id }), ' ', a.entry_title || ''),
           h('span', { class: 'when' }, a.actor + ' · ', time(a.at), a.run_id ? ' · run #' + a.run_id : '')),
@@ -640,12 +704,25 @@
 
   /* -------------------------------------------------------------------- lists */
 
+  var KIND_LABELS = {
+    create: 'Created', publish: 'Published', reject: 'Rejected', merge: 'Merged', flag: 'Flagged for you', pending: 'Back to pending',
+    private: 'Made private', set_status: 'Status changed', tag: 'Tags changed', edit: 'Edited', comment: 'Comment', comment_edit: 'Comment edited',
+    undo: 'Undo', report_hide: 'Hidden after reports', dismiss_reports: 'Reports dismissed', block: 'Author blocked', unblock: 'Author unblocked'
+  };
+  function kindLabel(k) {
+    if (KIND_LABELS[k]) return KIND_LABELS[k];
+    var w = String(k || '').replace(/_/g, ' ').toLowerCase();
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+
   var TAB_DEFS = {
     pending: { label: 'Pending', state: 'pending', empty: 'Nothing is waiting. The box is empty.', stat: 'pending' },
     flagged: { label: 'Needs you', state: 'flagged', empty: 'Nothing flagged. Nobody needs your opinion right now.', stat: 'flagged' },
     published: { label: 'Published', state: 'published', empty: 'No published entries match.', stat: 'published' },
     rejected: { label: 'Rejected', state: 'rejected', empty: 'No rejected entries.', stat: 'rejected' },
     merged: { label: 'Merged', state: 'merged', empty: 'No merged entries.', stat: 'merged' },
+    reported: { label: 'Reported', reported: true, empty: 'Nothing is reported. Visitors are happy.', stat: 'reported' },
+    blocked: { label: 'Blocked authors', blocked: true, empty: 'No author is blocked right now.', stat: 'blocks' },
     tasks: { label: 'My tasks', source: 'owner', empty: 'No tasks yet. Add one above.', stat: 'private' }
   };
 
@@ -674,6 +751,8 @@
     function query(offset, limit) {
       var o = { limit: limit, offset: offset, type: f.type, tag: f.tag, q: f.q.trim() };
       if (def.state) o.state = def.state;
+      if (def.reported) o.reported = 1;
+      if (def.blocked) o.blocked = 1;
       if (f.status) o.status = f.status;
       o.sort = tab === 'pending' ? 'oldest' : (f.sort || 'newest');
       if (def.source) o.source = def.source;
@@ -766,6 +845,7 @@
       var c = st.counts;
       var tiles = [
         ['pending', 'Pending', c.pending, 'pending'],
+        ['reported', 'Reported', c.reported || 0, 'reported'],
         ['flagged', 'Needs you', c.flagged, 'flagged'],
         ['published', 'Published', c.published, 'published'],
         ['rejected', 'Rejected', c.rejected, 'rejected'],
@@ -773,11 +853,13 @@
         ['tasks', 'Private tasks', c.private, 'tasks']
       ];
       var run = st.last_run;
-      var hint = c.pending > 0
+      var nReported = c.reported || 0;
+      var hint = c.pending > 0 || nReported > 0
         ? h('div', { class: 'callout warn', role: 'note' },
-          h('strong', { text: 'Pending: ' + c.pending + ' waiting for triage. ' }),
+          c.pending > 0 ? h('strong', { text: 'Pending: ' + c.pending + ' waiting for triage. ' }) : null,
+          nReported > 0 ? h('strong', { class: 'reported-note', text: 'Reported: ' + nReported + (nReported === 1 ? ' entry is' : ' entries are') + ' reported by visitors. ' }) : null,
           'Ask Claude Code to “empty the ArghBox”, or ',
-          h('button', { type: 'button', class: 'linklike', text: 'review them yourself', onclick: function () { showTab('pending'); } }), '.')
+          h('button', { type: 'button', class: 'linklike', text: 'review them yourself', onclick: function () { showTab(c.pending > 0 ? 'pending' : 'reported'); } }), '.')
         : h('div', { class: 'callout ok', role: 'note', text: 'Nothing is waiting for triage.' });
       fill(container,
         hint,
@@ -787,6 +869,9 @@
         })),
         h('ul', { class: 'tiles small-tiles' },
           h('li', null, h('div', { class: 'tile static', 'data-tile': 'votes' }, h('span', { class: 'tile-n', text: String(st.votes) }), h('span', { class: 'tile-l', text: 'Votes in total' }))),
+          h('li', null, (st.blocks || 0) > 0
+            ? h('button', { type: 'button', class: 'tile', 'data-tile': 'blocks', onclick: function () { showTab('blocked'); } }, h('span', { class: 'tile-n', text: String(st.blocks) }), h('span', { class: 'tile-l', text: 'Active author blocks' }))
+            : h('div', { class: 'tile static', 'data-tile': 'blocks' }, h('span', { class: 'tile-n', text: '0' }), h('span', { class: 'tile-l', text: 'Active author blocks' }))),
           h('li', null, h('div', { class: 'tile static', 'data-tile': 'week' }, h('span', { class: 'tile-n', text: String(st.entries_last_7_days) }), h('span', { class: 'tile-l', text: 'New entries, last 7 days' })))),
         h('section', { class: 'card last-run' },
           h('h2', { text: 'Last triage run' }),
@@ -974,7 +1059,7 @@
 
   /* ----------------------------------------------------------- shell and nav */
 
-  var TAB_ORDER = ['dashboard', 'pending', 'flagged', 'published', 'rejected', 'merged', 'tasks', 'log'];
+  var TAB_ORDER = ['dashboard', 'pending', 'reported', 'flagged', 'published', 'rejected', 'merged', 'tasks', 'log'];
   var TAB_LABELS = { dashboard: 'Dashboard', log: 'Log' };
 
   function tabLabel(t) { return TAB_LABELS[t] || TAB_DEFS[t].label; }
@@ -984,7 +1069,7 @@
     fill(navEl, TAB_ORDER.map(function (t) {
       var count = null;
       if (S.stats && TAB_DEFS[t]) count = S.stats.counts[TAB_DEFS[t].stat];
-      var cls = 'tab' + (S.tab === t ? ' on' : '') + (t === 'pending' && count > 0 ? ' urgent' : '');
+      var cls = 'tab' + (S.tab === t ? ' on' : '') + ((t === 'pending' || t === 'reported') && count > 0 ? ' urgent' : '');
       return h('button', { type: 'button', class: cls, role: 'tab', id: 'tab-' + t, 'data-tab': t, 'aria-selected': S.tab === t ? 'true' : 'false', 'aria-controls': 'main',
         onclick: function () { showTab(t); } },
         tabLabel(t), count !== null ? h('span', { class: 'badge', text: String(count), 'aria-label': count + ' entries' }) : null);

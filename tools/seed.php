@@ -8,7 +8,9 @@ declare(strict_types=1);
  *
  * Entry fields: type, title, body, state, status, status_at, source, tags, votes (number of
  * fake voters), comments [{body, public}], merged_into (index in the file), reject_reason,
- * author (any string, hashed like an IP), created_at, days_ago, status_days_ago, context.
+ * author (any string, hashed like an IP), created_at, days_ago, status_days_ago, context,
+ * reports [{reason, author}] (open reports; author is any string hashed like an IP, each report gets a random
+ * voter; no auto-hide), blocked (true blocks the entry's author).
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -18,7 +20,7 @@ if (PHP_SAPI !== 'cli') {
 
 define('ARGHBOX_BOOT', true);
 $lib = dirname(__DIR__) . '/arghbox/lib/';
-foreach (['version', 'http', 'config', 'security', 'db', 'entries', 'actions'] as $part) {
+foreach (['version', 'http', 'config', 'security', 'db', 'entries', 'reports', 'actions'] as $part) {
     require $lib . $part . '.php';
 }
 
@@ -72,6 +74,7 @@ try {
                 'reject_reason' => $state === 'rejected' ? (string)($it['reject_reason'] ?? 'other') : null,
                 'context' => is_array($it['context'] ?? null) ? $it['context'] : [],
                 'author_hash' => $source === 'owner' ? '' : ab_hash('ip', $author),
+                'author_voter' => $source === 'owner' ? '' : ab_hash('voter', 'seed-' . ($i * 1000 + 1)),
                 'receipt_hash' => '',
                 'created_at' => $created,
             ]);
@@ -83,6 +86,17 @@ try {
                 ab_insert_vote($db, $id, ab_hash('voter', $voter), $ip, null, $created);
             }
             ab_recount($db, $id);
+            foreach ((array)($it['reports'] ?? []) as $rp) {
+                $reason = (string)($rp['reason'] ?? 'other');
+                if (!in_array($reason, AB_REPORT_REASONS, true)) {
+                    throw new RuntimeException('entry ' . $i . ' has an unknown report reason: ' . $reason);
+                }
+                $rIp = ab_hash('ip', (string)($rp['author'] ?? 'seed-reporter-' . bin2hex(random_bytes(4))));
+                ab_insert_report($db, $id, $reason, ab_hash('voter', 'seed-report-' . bin2hex(random_bytes(8))), $rIp, $statusAt ?? $created);
+            }
+            if (!empty($it['blocked']) && $source !== 'owner') {
+                ab_insert_block($db, $id, ab_hash('ip', $author), ab_hash('voter', 'seed-' . ($i * 1000 + 1)), 'Seeded block', (int)ab_config()['limits']['block_days']);
+            }
             foreach ((array)($it['comments'] ?? []) as $c) {
                 ab_insert_comment($db, $id, (string)$c['body'], (bool)($c['public'] ?? true), $statusAt ?? $created);
             }

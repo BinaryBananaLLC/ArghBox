@@ -39,6 +39,7 @@ function ab_h_health(): void
         'moderation' => $cfg === null ? null : $cfg['moderation'],
         'admin' => $cfg !== null && $cfg['owner_token_sha256'] !== '',
         'config_valid' => $configValid,
+        'app_pass' => $configValid && $cfg['app_pass'] === true,
     ];
     if ($privileged) {
         $ip = ab_ip_header_status();
@@ -48,6 +49,7 @@ function ab_h_health(): void
             $ip['warning'],
             $st !== null ? ab_data_dir_warning($st['path']) : null,
             ab_turnstile_is_test_secret($cfg['turnstile_secret_key']) ? 'Turnstile is using Cloudflare test keys: every visitor passes. Use your real keys in production.' : null,
+            $cfg['app_pass'] ? 'app_pass is on: anyone can get a pass without the human check, so votes are limited only by the per-IP caps.' : null,
         ]));
         $out['turnstile_test_keys'] = ab_turnstile_is_test_secret($cfg['turnstile_secret_key']);
         $out['data_dir_warning'] = $st !== null ? ab_data_dir_warning($st['path']) : null;
@@ -95,6 +97,8 @@ function ab_h_list(): void
         'turnstile_site_key' => $cfg['turnstile_site_key'],
         'moderation' => $cfg['moderation'],
         'credit' => $cfg['credit'],
+        'contact' => $cfg['contact_url'],
+        'app_pass' => $cfg['app_pass'],
         'entries' => $entries,
         'tag_counts' => $tc,
         'voted' => $voted,
@@ -105,10 +109,23 @@ function ab_h_session(): void
 {
     $cfg = ab_config();
     $in = ab_body();
+    $token = $in['turnstile'] ?? null;
+    // Opt-in app pass (SPEC 6b): {app: true} without a Turnstile token, when the owner turned app_pass on.
+    $appOnly = ($in['app'] ?? null) === true && ($token === null || $token === '');
+    if ($appOnly) {
+        if (!$cfg['app_pass']) {
+            throw new AbError(403, 'turnstile_failed', 'The human check is missing. Reload and try again.');
+        }
+        ab_rl_take_all([
+            ['sessions|*', (int)$cfg['limits']['sessions_global_per_hour']],
+            ['sessions|' . ab_ip_hash(), (int)$cfg['limits']['sessions_per_hour']],
+        ]);
+        [$pass, $exp] = ab_make_pass();
+        ab_ok(['pass' => $pass, 'expires_at' => ab_iso($exp), 'expires_in' => $exp - ab_now()]);
+    }
     if ($cfg['turnstile_secret_key'] === '') {
         throw new AbError(503, 'turnstile_not_configured', 'Turnstile is not configured on this server.');
     }
-    $token = $in['turnstile'] ?? null;
     // Do not bother Cloudflare (or count against the limits) for tokens that cannot be real.
     if (!is_string($token) || $token === '' || strlen($token) > 2048 || !preg_match('/^[A-Za-z0-9._-]+$/', $token)) {
         throw new AbError(403, 'turnstile_failed', 'The human check is missing. Reload and try again.');
@@ -166,18 +183,26 @@ function ab_h_add(): void
     $receipt = ab_b64u(random_bytes(18));
     $state = $cfg['moderation'] === 'publish' ? 'published' : 'pending';
     $limit = (int)$cfg['limits']['entries_per_hour'];
+    $voterHash = ab_hash('voter', $voter);
 
-    $row = ab_tx(static function (PDO $db) use ($limit, $ipHash, $type, $title, $body, $context, $state, $receipt, $voter): array {
+    $row = ab_tx(static function (PDO $db) use ($limit, $ipHash, $voterHash, $type, $title, $body, $context, $state, $receipt): array {
         ab_rl_check($db, 'entries|' . $ipHash, $limit);
+        // A blocked author's entry is kept, as rejected (abuse), and the answer looks exactly like a normal add (SPEC 6b).
+        $blocked = ab_caller_blocked($db, $ipHash, $voterHash);
         $id = ab_insert_entry($db, [
-            'type' => $type, 'title' => $title, 'body' => $body, 'state' => $state, 'context' => $context,
-            'author_hash' => $ipHash, 'receipt_hash' => ab_hash('receipt', $receipt),
+            'type' => $type, 'title' => $title, 'body' => $body, 'state' => $blocked ? 'pending' : $state, 'context' => $context,
+            'author_hash' => $ipHash, 'author_voter' => $voterHash, 'receipt_hash' => ab_hash('receipt', $receipt),
         ]);
-        ab_insert_vote($db, $id, ab_hash('voter', $voter), $ipHash);
+        ab_insert_vote($db, $id, $voterHash, $ipHash);
         ab_recount($db, $id);
         ab_rl_hit($db, 'entries|' . $ipHash);
-        return ab_entry_row($db, $id);
+        $row = ab_entry_row($db, $id);
+        if ($blocked) {
+            [$row] = ab_change($db, $row, ['state' => 'rejected', 'reject_reason' => 'abuse'], 'reject', 'system', null);
+        }
+        return [$row, $blocked];
     });
+    [$row, $blocked] = $row;
     ab_ok(['entry' => ab_public_entry($row, ab_empty_ctx()) + ['state' => $state], 'receipt' => $receipt]);
 }
 

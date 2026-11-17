@@ -12,17 +12,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TAG_RE = /^[a-z0-9][a-z0-9-]{1,23}$/;
-export const ACTIONS = ['publish', 'reject', 'merge', 'flag', 'tag'];
+export const ACTIONS = ['publish', 'reject', 'merge', 'flag', 'tag', 'keep'];
 export const TYPES = ['idea', 'bug', 'question'];
 export const REJECT_REASONS = ['spam', 'abuse', 'off_topic', 'test', 'unclear', 'other'];
+
+const NO_REPORTED_DECISION = 'No decision for this reported entry (keep or reject).';
 
 const HELP = `ArghBox triage: the site owner's own AI empties the feedback box. No paid calls.
 
 Usage: node triage.mjs <command> [options]
 
 Commands:
-  fetch     Download the pending entries into <dir>/run/queue.json and run/packet.md.
-            Prints "Nothing to triage." when the box is empty. Keeps an existing
+  fetch     Download the pending and reported entries into <dir>/run/queue.json and run/packet.md.
+            Prints "Nothing to triage." when nothing is pending and nothing is reported. Keeps an existing
             verdicts.json unless --fresh.
   check     Validate <dir>/run/verdicts.json against queue.json. Exit 1 on problems.
   apply     Run check, send the decisions to the site, save history, clear run/.
@@ -139,11 +141,27 @@ export function similarGroups(queue, { min = 0.25 } = {}) {
     .sort((a, b) => a.ids[0] - b.ids[0]);
 }
 
+/** The visitor-supplied context of an entry as one line. */
+function ctxLine(ctx) {
+  const bits = ['page', 'lang', 'browser', 'os', 'screen'].filter((k) => ctx[k]).map((k) => `${k}: ${JSON.stringify(clip(ctx[k], 120))}`);
+  if (ctx.app && typeof ctx.app === 'object') bits.push(`app: ${JSON.stringify(clip([ctx.app.platform, ctx.app.version].filter(Boolean).join(' '), 60))}`);
+  return bits.join(', ') || 'none';
+}
+
+/** "3 open reports from different people: spam 2, abusive 1" for an admin entry's `reports` object, or '' when there are none. */
+export function reportsText(r) {
+  const open = r && Number.isInteger(r.open) ? r.open : 0;
+  if (open < 1) return '';
+  const reasons = Object.entries(r.reasons || {}).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(', ');
+  return `${open} open ${open === 1 ? 'report' : 'reports'}${reasons ? `: ${reasons}` : ''}${r.last_at ? `, the last at ${r.last_at}` : ''}`;
+}
+
 /** The packet the model reads. `queue` is the admin.queue response. */
 export function buildPacket(queue, { now = Date.now(), only = null, slice = null } = {}) {
   const allPending = queue.pending || [];
   const pending = only ? allPending.filter((e) => only.has(e.id)) : allPending;
   const flagged = queue.flagged || [];
+  const reported = queue.reported || [];
   const published = queue.published || [];
   const priv = queue.private || [];
   const site = queue.site || {};
@@ -169,7 +187,8 @@ export function buildPacket(queue, { now = Date.now(), only = null, slice = null
   const byType = {};
   for (const e of allPending) byType[e.type] = (byType[e.type] || 0) + 1;
   const typeText = Object.entries(byType).map(([t, n]) => `${n} ${t}`).join(', ');
-  L.push(`- Pending to decide: ${allPending.length}${typeText ? ` (${typeText})` : ''}. Published: ${published.length}. Flagged: ${flagged.length}. Private tasks: ${priv.length}.`);
+  L.push(`- Pending to decide: ${allPending.length}${typeText ? ` (${typeText})` : ''}. Published: ${published.length}. Reported (published, with open reports): ${reported.length}. Flagged: ${flagged.length}. Private tasks: ${priv.length}.`);
+  if (reported.length || allPending.some((e) => e.reports?.open > 0)) L.push('- A report is a signal, not a verdict. Read RULES.md, "Reports and blocks".');
   if (slice) L.push(`- THIS FILE IS SLICE ${slice.n} OF ${slice.of}: it lists only ${pending.length} of the pending entries, #${pending[0]?.id} to #${pending[pending.length - 1]?.id}. Decide only those; the other slices are other helpers' work.`);
   L.push('');
 
@@ -226,7 +245,7 @@ export function buildPacket(queue, { now = Date.now(), only = null, slice = null
   L.push(`## Pending entries (${pending.length}): your work, one decision each`, '');
   for (const e of pending) {
     const ctx = e.context && typeof e.context === 'object' ? e.context : {};
-    const ctxText = ['page', 'lang', 'browser', 'os', 'screen'].filter((k) => ctx[k]).map((k) => `${k}: ${JSON.stringify(clip(ctx[k], 120))}`).join(', ') || 'none';
+    const ctxText = ctxLine(ctx);
     const n = perAuthor.get(e.author) || 1;
     L.push(`### #${e.id}`);
     L.push(`- fingerprint: ${e.fingerprint}`);
@@ -234,10 +253,31 @@ export function buildPacket(queue, { now = Date.now(), only = null, slice = null
     L.push(`- author tag: \`${e.author}\` (${n} pending ${n === 1 ? 'entry' : 'entries'} from this tag)`);
     L.push(`- posted: ${e.created_at} (${ageText(e.created_at, now)})`);
     L.push(`- visitor-supplied context (page, language, browser, system; not verified): ${ctxText}`);
+    const rt = reportsText(e.reports);
+    if (rt) L.push(`- reports: this entry came back after visitors reported it (hidden after reports). Now ${rt}`);
     L.push(`- title (visitor text): ${JSON.stringify(e.title)}`);
     L.push('- text (visitor text):', '', fence(e.body), '');
   }
   if (!pending.length) L.push('(none)', '');
+
+  if (!slice) {
+    L.push(`## Reported entries (${reported.length}): published, but visitors reported them. Decide keep or reject, one decision each`, '');
+    for (const e of reported) {
+      const ctx = e.context && typeof e.context === 'object' ? e.context : {};
+      L.push(`### #${e.id}`);
+      L.push(`- fingerprint: ${e.fingerprint}`);
+      L.push(`- type: ${e.type}, status ${e.status}, ${e.votes} ${e.votes === 1 ? 'vote' : 'votes'}`);
+      L.push(`- author tag: \`${e.author}\``);
+      L.push(`- posted: ${e.created_at} (${ageText(e.created_at, now)})`);
+      L.push(`- reports: ${reportsText(e.reports)}`);
+      L.push(`- visitor-supplied context (page, language, browser, system; not verified): ${ctxLine(ctx)}`);
+      L.push(`- title (visitor text): ${JSON.stringify(e.title)}`);
+      L.push('- text (visitor text):', '', fence(e.body), '');
+    }
+    if (!reported.length) L.push('(none)', '');
+  } else if (reported.length) {
+    L.push(`## Reported entries: ${reported.length}, listed in packet.md only; not your work in this slice`, '');
+  }
   return L.join('\n');
 }
 
@@ -259,6 +299,7 @@ export function validateVerdicts(queue, verdicts) {
   const pending = new Map((queue.pending || []).map((e) => [e.id, e]));
   const published = new Map((queue.published || []).map((e) => [e.id, e]));
   const flagged = new Map((queue.flagged || []).map((e) => [e.id, e]));
+  const reported = new Map((queue.reported || []).map((e) => [e.id, e]));
   const priv = new Map((queue.private || []).map((e) => [e.id, e]));
   const vocab = new Set((queue.tags || []).map((t) => t.tag));
 
@@ -290,7 +331,7 @@ export function validateVerdicts(queue, verdicts) {
 
   let tagCount = 0;
   for (const [id, d] of byId) {
-    const e = pending.get(id) || published.get(id);
+    const e = pending.get(id) || reported.get(id) || published.get(id);
     if (!e) {
       if (flagged.has(id)) err(id, 'This entry is flagged: it waits for the owner and gets no decision.');
       else if (priv.has(id)) err(id, "This is one of the owner's private tasks: it gets no decision.");
@@ -298,12 +339,16 @@ export function validateVerdicts(queue, verdicts) {
       continue;
     }
     const isPending = pending.has(id);
+    const isReported = reported.has(id);
     if (!ACTIONS.includes(d.action)) {
       err(id, `"action" must be one of ${ACTIONS.join(', ')}.`);
       continue;
     }
     if (isPending && d.action === 'tag') err(id, '"tag" is only for published entries; a pending entry needs publish, reject, merge or flag.');
-    if (!isPending && d.action !== 'merge' && d.action !== 'tag') err(id, `A published entry can only be merged or tagged, not "${d.action}".`);
+    if (isPending && d.action === 'keep') err(id, '"keep" is only for reported entries; a pending entry needs publish, reject, merge or flag.');
+    if (!isPending && isReported && d.action !== 'keep' && d.action !== 'reject') err(id, `A reported entry gets "keep" or "reject", not "${d.action}".`);
+    else if (!isPending && !isReported && d.action === 'keep') err(id, '"keep" is only for entries that have open reports (the Reported list).');
+    else if (!isPending && !isReported && d.action !== 'merge' && d.action !== 'tag') err(id, `A published entry can only be merged or tagged, not "${d.action}".`);
     if (typeof d.fingerprint !== 'string' || d.fingerprint !== e.fingerprint) {
       err(id, `Fingerprint does not match queue.json (expected ${e.fingerprint}). Copy it exactly from packet.md.`);
     }
@@ -317,6 +362,12 @@ export function validateVerdicts(queue, verdicts) {
       if (!REJECT_REASONS.includes(d.reject_reason)) err(id, `A reject needs "reject_reason": ${REJECT_REASONS.join(', ')}.`);
     } else if (d.reject_reason !== undefined && d.reject_reason !== null) {
       warn(id, '"reject_reason" is only used with reject; it is ignored.');
+    }
+
+    if (d.block_author !== undefined && d.block_author !== null && typeof d.block_author !== 'boolean') err(id, '"block_author" must be true or false.');
+    else if (d.block_author === true) {
+      if (d.action !== 'reject' || (d.reject_reason !== 'spam' && d.reject_reason !== 'abuse')) err(id, '"block_author" is only allowed on a reject with reject_reason spam or abuse.');
+      else if (isInt(d.confidence) && d.confidence < 90) warn(id, `block_author with confidence ${d.confidence}: RULES.md asks for 90 or more. Block only for clear spam or abuse.`);
     }
 
     if (d.action === 'merge') {
@@ -340,7 +391,9 @@ export function validateVerdicts(queue, verdicts) {
       if (!Array.isArray(d.tags) || d.tags.length < 1) err(id, 'A tag decision needs 1 to 3 "tags".');
     }
 
-    if (isInt(d.confidence) && d.confidence < threshold && d.action !== 'flag' && d.action !== 'tag') {
+    if (isInt(d.confidence) && d.confidence < threshold && isReported && (d.action === 'keep' || d.action === 'reject')) {
+      warn(id, `Confidence ${d.confidence} is below the threshold ${threshold}: the server will skip this decision. The entry stays public and stays in the owner's Reported list.`);
+    } else if (isInt(d.confidence) && d.confidence < threshold && d.action !== 'flag' && d.action !== 'tag' && d.action !== 'keep') {
       if (isPending) warn(id, `Confidence ${d.confidence} is below the threshold ${threshold}: it will be stored as a flag for the owner.`);
       else err(id, `Confidence ${d.confidence} is below the threshold ${threshold}: the server would skip this merge. Raise it or leave the entry out.`);
     }
@@ -385,6 +438,9 @@ export function validateVerdicts(queue, verdicts) {
 
   for (const id of pending.keys()) {
     if (!byId.has(id)) err(id, 'No decision for this pending entry.');
+  }
+  for (const id of reported.keys()) {
+    if (!byId.has(id)) err(id, NO_REPORTED_DECISION);
   }
   return { errors, warnings };
 }
@@ -602,7 +658,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       for (const [t, ids] of newTags) say(`warning  New tag "${t}" (on ${ids.map((i) => '#' + i).join(', ')}) is not in the vocabulary. Reuse an existing tag if one fits, or keep it if the topic will come back.`);
       // Errors by entry id (file-wide ones first); the same message on many entries is said once.
       const sorted = [...errors].sort((a, b) => (a.id ?? -1) - (b.id ?? -1));
-      const groupKey = (e) => (e.id !== null && (/^Tag .* is not valid/.test(e.message) || e.message === 'No decision for this pending entry.') ? e.message : null);
+      const groupKey = (e) => (e.id !== null && (/^Tag .* is not valid/.test(e.message) || e.message === 'No decision for this pending entry.' || e.message === NO_REPORTED_DECISION) ? e.message : null);
       const groups = new Map();
       for (const e of sorted) {
         const k = groupKey(e);
@@ -619,11 +675,11 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
         said.add(k);
         const ids = groups.get(k);
         if (ids.length === 1) say(`PROBLEM  ${tag(e)}${e.message}`);
-        else if (k.startsWith('No decision')) say(`PROBLEM  No decision for ${ids.length} pending entries: ${ids.map((i) => '#' + i).join(' ')}`);
+        else if (k.startsWith('No decision')) say(`PROBLEM  No decision for ${ids.length} ${k === NO_REPORTED_DECISION ? 'reported' : 'pending'} entries: ${ids.map((i) => '#' + i).join(' ')}`);
         else say(`PROBLEM  ${e.message} (on ${ids.map((i) => '#' + i).join(' ')})`);
       }
     };
-    const titleMap = (q) => new Map([...(q.pending || []), ...(q.published || [])].map((e) => [e.id, e.title]));
+    const titleMap = (q) => new Map([...(q.pending || []), ...(q.reported || []), ...(q.published || [])].map((e) => [e.id, e.title]));
 
     const runCheck = ({ quiet = false } = {}) => {
       const queue = loadQueue();
@@ -640,7 +696,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
         say(`${rep.errors.length} problem${rep.errors.length === 1 ? '' : 's'} in ${rel(files.verdicts)}. Fix them and run check again.`);
         return { code: 1, queue, verdicts: v.verdicts, rep };
       }
-      if (!quiet) say(`Verdicts OK: ${n} decisions for ${queue.pending.length} pending entries${rep.warnings.length ? `, ${rep.warnings.length} warning${rep.warnings.length === 1 ? '' : 's'}` : ''}.`);
+      if (!quiet) say(`Verdicts OK: ${n} decisions for ${queue.pending.length} pending entries${(queue.reported || []).length ? ` and ${queue.reported.length} reported` : ''}${rep.warnings.length ? `, ${rep.warnings.length} warning${rep.warnings.length === 1 ? '' : 's'}` : ''}.`);
       return { code: 0, queue, verdicts: v.verdicts, rep };
     };
 
@@ -653,10 +709,11 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       const totalPending = (queue.pending || []).length;
       if (o.limit && totalPending > o.limit) queue.pending = queue.pending.slice(0, o.limit);
       const pending = queue.pending || [];
+      const reportedList = queue.reported || [];
       fs.mkdirSync(path.dirname(files.queue), { recursive: true });
       if (o.fresh) fs.rmSync(files.verdicts, { force: true });
       const { adminUrl } = connection();
-      if (!pending.length) {
+      if (!pending.length && !reportedList.length) {
         fs.rmSync(files.queue, { force: true });
         fs.rmSync(files.packet, { force: true });
         say('Nothing to triage.');
@@ -680,14 +737,14 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       const byType = {};
       for (const e of pending) byType[e.type] = (byType[e.type] || 0) + 1;
       if (pending.length < totalPending) say(`Backlog: ${totalPending} pending, the ${pending.length} oldest are in this packet. Fetch again after apply for the rest.`);
-      say(`Fetched ${pending.length} pending ${pending.length === 1 ? 'entry' : 'entries'} (${Object.entries(byType).map(([t, n]) => `${n} ${t}`).join(', ')}) from ${queue.site?.name || 'the site'}.`);
+      say(`Fetched ${pending.length} pending ${pending.length === 1 ? 'entry' : 'entries'}${pending.length ? ` (${Object.entries(byType).map(([t, n]) => `${n} ${t}`).join(', ')})` : ''} and ${reportedList.length} reported ${reportedList.length === 1 ? 'entry' : 'entries'} from ${queue.site?.name || 'the site'}.`);
       say(`Also in the packet: ${(queue.published || []).length} published, ${(queue.flagged || []).length} flagged, ${(queue.private || []).length} private tasks, ${(queue.tags || []).length} tags. Threshold ${queue.auto_apply_min_confidence}.`);
       if (exists(files.verdicts)) say(`An existing ${rel(files.verdicts)} was kept. Run check to see whether it still fits, or fetch --fresh to start over.`);
       say('');
       if (slices.length) say(`Slices for helper agents: ${slices.map((x) => `${rel(x.file)} (#${x.ids[0]}..#${x.ids[x.ids.length - 1]})`).join(', ')}. Each has the same header and only its own entries.`);
       say('Next:');
       say('  1. Read RULES.md completely, then read ' + rel(files.packet));
-      say(`  2. Write ${rel(files.verdicts)} (one decision for every pending entry)`);
+      say(`  2. Write ${rel(files.verdicts)} (one decision for every pending entry, and keep or reject for every reported entry)`);
       say(`  3. ${scriptArg} check${dirArg}`);
       say(`  4. ${scriptArg} apply${dirArg}`);
       return 0;
@@ -721,11 +778,16 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
         throw new Fail(2, `The site answered apply with an invalid run id (${JSON.stringify(res.run_id)}), so no history file was written. Check the admin page before running apply again.`);
       }
       const titles = titleMap(queue);
-      const tally = { publish: 0, reject: 0, merge: 0, flag: 0, flagged_instead: 0, tag: 0 };
+      const tally = { publish: 0, reject: 0, merge: 0, flag: 0, flagged_instead: 0, tag: 0, keep: 0, block: 0 };
       for (const a of res.applied || []) {
         if (a.flagged_instead) tally.flagged_instead++;
-        else tally[a.action] = (tally[a.action] || 0) + 1;
+        else {
+          tally[a.action] = (tally[a.action] || 0) + 1;
+          if (a.blocked === true) tally.block++;
+        }
       }
+      // Blocks are counted from what the server did (a block can be a no-op), not from what was asked for.
+      if (!(res.applied || []).some((a) => a.blocked !== undefined) && Number.isInteger(res.counts?.block)) tally.block = res.counts.block;
       const skipped = res.skipped || [];
       const at = new Date().toISOString();
       fs.mkdirSync(files.history, { recursive: true });
@@ -751,6 +813,8 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       say(`  flagged:            ${tally.flag}`);
       say(`  flagged instead:    ${tally.flagged_instead}  (confidence below the threshold)`);
       say(`  tagged:             ${tally.tag}`);
+      say(`  kept (reports cleared): ${tally.keep}`);
+      say(`  authors blocked:    ${tally.block}`);
       say(`  skipped:            ${skipped.length}`);
       for (const s of skipped) say(`    #${s.id ?? '?'} ${s.reason}${s.id && titles.get(s.id) ? ` (${clip(titles.get(s.id), 50)})` : ''}`);
       for (const a of res.applied || []) if (a.flagged_instead) say(`  flagged instead: #${a.id} ${clip(titles.get(a.id) || '', 60)}`);
@@ -764,7 +828,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       const stats = await api('admin.stats');
       const { adminUrl } = connection();
       const c = stats.counts || {};
-      say(`Site: pending ${c.pending ?? 0}, published ${c.published ?? 0}, flagged ${c.flagged ?? 0}, rejected ${c.rejected ?? 0}, merged ${c.merged ?? 0}, private ${c.private ?? 0}; ${stats.votes ?? 0} votes; ${stats.entries_last_7_days ?? 0} new entries in the last 7 days.`);
+      say(`Site: pending ${c.pending ?? 0}, published ${c.published ?? 0}, flagged ${c.flagged ?? 0}, rejected ${c.rejected ?? 0}, merged ${c.merged ?? 0}, private ${c.private ?? 0}, reported ${c.reported ?? 0}; ${stats.blocks ?? 0} active author blocks; ${stats.votes ?? 0} votes; ${stats.entries_last_7_days ?? 0} new entries in the last 7 days.`);
       const lr = stats.last_run;
       let lastUndone = false;
       if (lr && exists(files.log)) {
@@ -778,7 +842,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd(), out =
       else say('Last run: none yet.');
       if (exists(files.queue)) {
         const q = readJson(files.queue);
-        say(`Local: ${rel(files.queue)} fetched ${q.fetched_at || '?'} with ${(q.pending || []).length} pending entries.`);
+        say(`Local: ${rel(files.queue)} fetched ${q.fetched_at || '?'} with ${(q.pending || []).length} pending and ${(q.reported || []).length} reported entries.`);
       } else say('Local: nothing fetched.');
       if (exists(files.verdicts)) {
         try {

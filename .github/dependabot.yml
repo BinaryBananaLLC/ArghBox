@@ -1,11 +1,25 @@
 version: 2
+# Once a month, bundled: one pull request for all minor and patch updates, one for majors, one for the
+# workflow's pinned actions. Never a pull request per package. Nothing runs tests on these pull requests
+# (the repository has no CI on purpose), so they cost no Actions minutes beyond Dependabot's own check.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+      majors:
+        patterns: ['*']
+        update-types: ['major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ['*']

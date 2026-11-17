@@ -407,7 +407,7 @@ describe('admin.apply', () => {
     assert.equal(run.id, r.json.run_id);
     assert.equal(run.reviewer, 'Test Reviewer');
     assert.equal(run.digest, 'line one\nline two');
-    assert.deepEqual(run.counts, { publish: 1, reject: 1, merge: 1, flag: 2, tag: 0, skipped: 7 });
+    assert.deepEqual(run.counts, { publish: 1, reject: 1, merge: 1, flag: 2, tag: 0, keep: 0, block: 0, skipped: 7 });
     assert.equal((await box.admin('admin.stats')).json.last_run.id, run.id);
     const log = (await box.admin('admin.log', { query: { run_id: String(run.id) } })).json;
     assert.equal(log.total, 5);
@@ -605,7 +605,7 @@ describe('log, stats, entries filters', () => {
     await mk(box, 'Another bug report here', { type: 'bug' });
     await box.admin('admin.create', { body: { type: 'idea', title: 'Owner private task' } });
     const s = (await box.admin('admin.stats')).json;
-    assert.deepEqual(s.counts, { pending: 0, published: 2, rejected: 0, merged: 0, flagged: 0, private: 1 });
+    assert.deepEqual(s.counts, { pending: 0, published: 2, rejected: 0, merged: 0, flagged: 0, private: 1, reported: 0 });
     assert.equal(s.votes, 2);
     assert.equal(s.entries_last_7_days, 2);
     assert.equal(s.last_run, null);

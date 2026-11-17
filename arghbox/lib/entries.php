@@ -5,6 +5,7 @@ defined('ARGHBOX_BOOT') || exit;
 const AB_TYPES = ['idea', 'bug', 'question'];
 const AB_STATES = ['pending', 'published', 'rejected', 'merged', 'flagged', 'private'];
 const AB_REJECT_REASONS = ['spam', 'abuse', 'off_topic', 'test', 'unclear', 'other'];
+const AB_REPORT_REASONS = ['spam', 'abusive', 'off_topic', 'other'];
 const AB_STATUSES = ['open', 'planned', 'in_progress', 'done', 'declined'];
 const AB_MUTABLE = ['state', 'status', 'status_at', 'type', 'title', 'body', 'merged_into', 'reject_reason', 'tags', 'external_url', 'ai'];
 
@@ -127,6 +128,19 @@ function ab_clean_context($ctx): array
     if (isset($ctx['screen']) && in_array($ctx['screen'], ['small', 'medium', 'large'], true)) {
         $out['screen'] = $ctx['screen'];
     }
+    // The mobile app page sends {platform, version}; invalid members are dropped, never an error.
+    if (isset($ctx['app']) && is_array($ctx['app'])) {
+        $app = [];
+        if (isset($ctx['app']['platform']) && is_string($ctx['app']['platform']) && in_array($ctx['app']['platform'], ['ios', 'android', 'other'], true)) {
+            $app['platform'] = $ctx['app']['platform'];
+        }
+        if (isset($ctx['app']['version']) && is_string($ctx['app']['version']) && preg_match('/^[0-9A-Za-z._+-]{1,20}$/D', $ctx['app']['version'])) {
+            $app['version'] = $ctx['app']['version'];
+        }
+        if ($app) {
+            $out['app'] = $app;
+        }
+    }
     return $out;
 }
 
@@ -204,10 +218,16 @@ function ab_entry_row(PDO $db, int $id): ?array
 
 function ab_fingerprint(array $r): string
 {
-    $s = implode('|', [
+    $parts = [
         (string)$r['id'], $r['state'], $r['status'], $r['type'], $r['title'], $r['body'],
         $r['merged_into'] === null ? '' : (string)$r['merged_into'],
-    ]);
+    ];
+    // Open reports are part of the fingerprint (SPEC 5): a new report makes a stale decision `changed`.
+    $open = ab_open_report_ids(ab_db(), (int)$r['id']);
+    if ($open) {
+        $parts[] = 'r:' . implode(',', $open);
+    }
+    $s = implode('|', $parts);
     return substr(hash('sha256', $s), 0, 16);
 }
 
@@ -287,12 +307,32 @@ function ab_alias_info(PDO $db): array
             $pub[$eid][] = ['body' => $c['body'], 'at' => $c['created_at']];
         }
     }
-    return ['count' => $count, 'titles' => $titles, 'pub' => $pub, 'all' => $all];
+    $reports = [];
+    foreach (ab_all($db, 'SELECT entry_id, reason, created_at FROM reports WHERE cleared_at IS NULL ORDER BY id') as $r) {
+        $eid = (int)$r['entry_id'];
+        $reports[$eid] = $reports[$eid] ?? ab_empty_reports();
+        $reports[$eid]['open']++;
+        $reports[$eid]['reasons'][$r['reason']] = ($reports[$eid]['reasons'][$r['reason']] ?? 0) + 1;
+        if ($reports[$eid]['last_at'] === null || $r['created_at'] > $reports[$eid]['last_at']) {
+            $reports[$eid]['last_at'] = $r['created_at'];
+        }
+    }
+    foreach (ab_all($db, 'SELECT entry_id, COUNT(*) AS n FROM reports GROUP BY entry_id') as $r) {
+        $eid = (int)$r['entry_id'];
+        $reports[$eid] = $reports[$eid] ?? ab_empty_reports();
+        $reports[$eid]['total'] = (int)$r['n'];
+    }
+    return ['count' => $count, 'titles' => $titles, 'pub' => $pub, 'all' => $all, 'reports' => $reports, 'blocks' => ab_active_blocks($db)];
+}
+
+function ab_empty_reports(): array
+{
+    return ['open' => 0, 'total' => 0, 'reasons' => array_fill_keys(AB_REPORT_REASONS, 0), 'last_at' => null];
 }
 
 function ab_empty_ctx(): array
 {
-    return ['count' => [], 'titles' => [], 'pub' => [], 'all' => []];
+    return ['count' => [], 'titles' => [], 'pub' => [], 'all' => [], 'reports' => [], 'blocks' => []];
 }
 
 function ab_public_entry(array $r, array $ctx): array
@@ -340,6 +380,8 @@ function ab_admin_entry(array $r, array $ctx): array
         'author' => substr((string)$r['author_hash'], 0, 8),
         'fingerprint' => ab_fingerprint($r),
         'updated_at' => $r['updated_at'],
+        'reports' => $ctx['reports'][$id] ?? ab_empty_reports(),
+        'author_blocked' => ab_row_author_blocked($r, $ctx['blocks'] ?? []),
     ]);
 }
 
@@ -353,13 +395,13 @@ function ab_insert_entry(PDO $db, array $f): int
     $status = $f['status'] ?? 'open';
     $statusAt = $f['status_at'] ?? ($status !== 'open' ? $created : null);
     $st = $db->prepare('INSERT INTO entries(type, title, body, title_original, body_original, source, state, status, status_at,
-        merged_into, reject_reason, tags, votes, context, ai, author_hash, receipt_hash, created_at, updated_at)
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, ?, ?, ?)');
+        merged_into, reject_reason, tags, votes, context, ai, author_hash, author_voter, receipt_hash, created_at, updated_at)
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, ?, ?, ?, ?)');
     $st->execute([
         $f['type'], $f['title'], $f['body'], $f['title'], $f['body'], $f['source'] ?? 'visitor', $f['state'], $status,
         $statusAt, $f['merged_into'] ?? null, $f['reject_reason'] ?? null, ab_tags_json($f['tags'] ?? []),
         json_encode($f['context'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        $f['author_hash'] ?? '', $f['receipt_hash'] ?? '', $created, $created,
+        $f['author_hash'] ?? '', $f['author_voter'] ?? '', $f['receipt_hash'] ?? '', $created, $created,
     ]);
     return (int)$db->lastInsertId();
 }

@@ -40,7 +40,7 @@ node tools/dev.mjs --port 8788 --dev-dir ../my-dev-state --origin http://localho
 
 ## The rules
 
-- **PHP 8.1 compatible.** Shared hosts run PHP 8.1 and 8.2. Do not use 8.2+ syntax (readonly classes, DNF types, standalone `true`/`false`/`null` types, `json_validate`, property hooks, the pipe operator). CI runs `php -l` on every PHP file with PHP 8.1 to catch this. Extensions you can rely on: PDO with SQLite, json, hash and openssl or random. `mbstring` and `curl` are optional.
+- **PHP 8.1 compatible.** Shared hosts run PHP 8.1 and 8.2. Do not use 8.2+ syntax (readonly classes, DNF types, standalone `true`/`false`/`null` types, `json_validate`, property hooks, the pipe operator). Extensions you can rely on: PDO with SQLite, json, hash and openssl or random. `mbstring` and `curl` are optional.
 - **No build step, no runtime dependencies.** The `arghbox/` folder is uploaded as it is. The widget is hand-written ES2019 without modules. Node scripts use only Node built-ins. Playwright is the only dev dependency.
 - **Size budgets.** `arghbox.js` stays under 4 KB gzipped, because it loads on every page of the host site. `arghbox-app.js` stays under 20 KB gzipped. Run `npm run check:size`.
 - **Privacy.** Never store raw IP addresses, full user agents, emails or visitor cookies. Visitor text is shown with `textContent`, never `innerHTML`.
@@ -60,18 +60,18 @@ Copy `arghbox/i18n/en.json` to `arghbox/i18n/<code>.json`, translate the values,
 ## Pull requests
 
 1. Branch from `main`, keep the change focused.
-2. Run `npm run test:all`.
+2. Run `npm run test:all`. There is no CI: the tests run on your computer, and the maintainer runs them again before merging.
 3. Fill in the pull request template.
 4. Be patient and kind: this is a small project.
 
 ## Releasing (maintainers)
 
-Releases come only from the **Release** workflow, never from a laptop or the Releases page:
+Releases come only from the **Release** workflow (`.github/workflows/release.yml`), never from a laptop or the Releases page. It is the repository's only workflow: there is no CI, and the release does not run the tests, so run them on your computer first.
 
 1. Set the new version in `package.json`, `arghbox/VERSION` and `arghbox/lib/version.php`, and give it a dated `## [x.y.z] - YYYY-MM-DD` section in `CHANGELOG.md`. `npm test` fails until all four agree.
-2. Merge to `main`, then run **Actions, Release, Run workflow** with the tag `vx.y.z`.
+2. Run `npm run test:all`, push to `main`, then run **Actions, Release, Run workflow** with the tag `vx.y.z`.
 
-The workflow runs the tests, builds the zips and the npm tarball with provenance attestations, publishes the GitHub Release, and publishes `arghbox` to npm with provenance. A version with a hyphen (`0.2.0-rc.1`) becomes a pre-release and goes to npm under the `next` tag. The one-time npm setup is described at the top of `.github/workflows/release.yml`.
+The workflow builds the zips and the npm tarball with provenance attestations, publishes the GitHub Release, and publishes `arghbox` to npm with provenance. A version with a hyphen (`0.2.0-rc.1`) becomes a pre-release and goes to npm under the `next` tag. The one-time npm setup is described at the top of `.github/workflows/release.yml`.
 
 ## Security
 

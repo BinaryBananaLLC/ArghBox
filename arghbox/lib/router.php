@@ -20,6 +20,7 @@ function ab_public_routes(): array
         'session' => ['POST', 'ab_h_session'],
         'add' => ['POST', 'ab_h_add'],
         'vote' => ['POST', 'ab_h_vote'],
+        'report' => ['POST', 'ab_h_report'],
         'mine' => ['POST', 'ab_h_mine'],
         'feed' => ['GET', 'ab_h_feed'],
     ];
@@ -44,6 +45,9 @@ function ab_admin_routes(): array
         'admin.log' => ['GET', 'ab_h_admin_log'],
         'admin.runs' => ['GET', 'ab_h_admin_runs'],
         'admin.stats' => ['GET', 'ab_h_admin_stats'],
+        'admin.dismiss_reports' => ['POST', 'ab_h_admin_dismiss_reports'],
+        'admin.block' => ['POST', 'ab_h_admin_block'],
+        'admin.unblock' => ['POST', 'ab_h_admin_unblock'],
     ];
 }
 

@@ -22,6 +22,14 @@ function ab_change(PDO $db, array $row, array $changes, string $kind, string $ac
 {
     $before = ab_snapshot($row);
     $now = ab_iso();
+    // Publishing an entry that was reviewed clears its open reports (SPEC 6b); undoing the action re-opens them.
+    $clear = [];
+    if (($changes['state'] ?? null) === 'published' && $row['state'] !== 'published') {
+        $clear = ab_open_report_ids($db, (int)$row['id']);
+        if ($clear) {
+            $afterExtra['cleared_report_ids'] = $clear;
+        }
+    }
     if (isset($changes['status']) && $changes['status'] !== $row['status'] && !array_key_exists('status_at', $changes)) {
         $changes['status_at'] = $now;
     }
@@ -40,6 +48,9 @@ function ab_change(PDO $db, array $row, array $changes, string $kind, string $ac
     $db->prepare('UPDATE entries SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
     $new = ab_entry_row($db, (int)$row['id']);
     $id = ab_log_action($db, $actor, $runId, $kind, (int)$row['id'], $before, ab_snapshot($new) + $afterExtra, $now);
+    if ($clear) {
+        ab_clear_reports($db, $clear, $id);
+    }
     return [$new, $id];
 }
 
@@ -93,6 +104,12 @@ function ab_is_comment_kind(string $kind): bool
     return $kind === 'comment' || $kind === 'comment_edit';
 }
 
+/** Actions on reports and blocks: they neither block nor are blocked by entry-field undo. */
+function ab_is_side_kind(string $kind): bool
+{
+    return $kind === 'dismiss_reports' || $kind === 'block' || $kind === 'unblock';
+}
+
 // ---- Undo ---------------------------------------------------------------
 
 /** Is the action undoable right now? Returns null when yes, else the reason. */
@@ -106,6 +123,15 @@ function ab_undo_blocker(PDO $db, array $a): ?string
     }
     if ($a['undone_by'] !== null) {
         return 'Already undone.';
+    }
+    if ($a['kind'] === 'block' || $a['kind'] === 'unblock') {
+        // Among block and unblock actions of one entry, undo in reverse order (SPEC 6b).
+        $later = ab_scalar($db, "SELECT COUNT(*) FROM actions WHERE entry_id = ? AND id > ? AND undone_by IS NULL AND kind IN ('block', 'unblock')",
+            [(int)$a['entry_id'], (int)$a['id']]);
+        return (int)$later > 0 ? 'A later block or unblock of this author must be undone first.' : null;
+    }
+    if (ab_is_side_kind((string)$a['kind'])) {
+        return null; // reports do not take part in entry-field undo ordering
     }
     if (ab_is_comment_kind((string)$a['kind'])) {
         $after = json_decode((string)$a['after'], true);
@@ -121,7 +147,7 @@ function ab_undo_blocker(PDO $db, array $a): ?string
         return null;
     }
     $later = ab_scalar($db, "SELECT COUNT(*) FROM actions WHERE entry_id = ? AND id > ? AND undone_by IS NULL
-        AND kind NOT IN ('undo', 'comment', 'comment_edit')", [(int)$a['entry_id'], (int)$a['id']]);
+        AND kind NOT IN ('undo', 'comment', 'comment_edit', 'dismiss_reports', 'block', 'unblock')", [(int)$a['entry_id'], (int)$a['id']]);
     if ((int)$later > 0) {
         return 'A later action on this entry must be undone first.';
     }
@@ -135,6 +161,15 @@ function ab_undo_blocker(PDO $db, array $a): ?string
         }
     }
     return null;
+}
+
+/** Re-open reports that action $actionId cleared. */
+function ab_reopen_reports(PDO $db, $ids, int $actionId): void
+{
+    $st = $db->prepare('UPDATE reports SET cleared_at = NULL, cleared_by = NULL WHERE id = ? AND cleared_by = ?');
+    foreach (is_array($ids) ? $ids : [] as $rid) {
+        $st->execute([(int)$rid, $actionId]);
+    }
 }
 
 /** Undo one action. Returns null on success, else the refusal reason. */
@@ -182,6 +217,21 @@ function ab_undo_action(PDO $db, int $actionId, string $actor): ?string
         return 'The entry no longer exists.';
     }
     $current = ab_snapshot($row);
+    if (ab_is_side_kind((string)$a['kind'])) {
+        if ($a['kind'] === 'dismiss_reports') {
+            ab_reopen_reports($db, $after['cleared_report_ids'] ?? [], (int)$a['id']);
+        } elseif ($a['kind'] === 'block') {
+            $db->prepare('UPDATE blocks SET lifted_at = ? WHERE id = ? AND lifted_at IS NULL')->execute([$now, (int)($after['block_id'] ?? 0)]);
+        } else {
+            $st = $db->prepare('UPDATE blocks SET lifted_at = NULL WHERE id = ?');
+            foreach ((array)($after['block_ids'] ?? []) as $bid) {
+                $st->execute([(int)$bid]);
+            }
+        }
+        $undoId = ab_log_action($db, $actor, null, 'undo', (int)$row['id'], $current, $current + ['undoes' => (int)$a['id']], $now);
+        $db->prepare('UPDATE actions SET undone_by = ? WHERE id = ?')->execute([$undoId, (int)$a['id']]);
+        return null;
+    }
     $moved = isset($after['moved_vote_ids']) && is_array($after['moved_vote_ids']) ? $after['moved_vote_ids'] : [];
     $targetId = isset($after['merged_into']) && $after['merged_into'] !== null ? (int)$after['merged_into'] : null;
 
@@ -206,6 +256,9 @@ function ab_undo_action(PDO $db, int $actionId, string $actor): ?string
         }
     }
     ab_recount($db, (int)$row['id']);
+    if (!empty($after['cleared_report_ids']) && is_array($after['cleared_report_ids'])) {
+        ab_reopen_reports($db, $after['cleared_report_ids'], (int)$a['id']);
+    }
 
     $new = ab_entry_row($db, (int)$row['id']);
     $undoId = ab_log_action($db, $actor, null, 'undo', (int)$row['id'], $current, ab_snapshot($new) + ['undoes' => (int)$a['id']], $now);
@@ -224,9 +277,22 @@ function ab_action_summary(array $a): string
         case 'create':
             return "Created owner item #$id.";
         case 'publish':
-            return "Published #$id.";
+            $n = isset($after['cleared_report_ids']) && is_array($after['cleared_report_ids']) ? count($after['cleared_report_ids']) : 0;
+            return "Published #$id." . ($n > 0 ? " Cleared $n " . ($n === 1 ? 'report' : 'reports') . '.' : '');
+        case 'report_hide':
+            $n = (int)($after['reporters'] ?? 0);
+            return $n > 0 ? "Hidden after $n " . ($n === 1 ? 'report' : 'reports') . '.' : 'Hidden after reports.';
+        case 'dismiss_reports':
+            $n = isset($after['cleared_report_ids']) && is_array($after['cleared_report_ids']) ? count($after['cleared_report_ids']) : 0;
+            $why = is_array($after['ai'] ?? null) ? trim((string)($after['ai']['reason'] ?? '')) : '';
+            return "Dismissed $n " . ($n === 1 ? 'report' : 'reports') . ($why !== '' ? ': ' . $why : '.');
+        case 'block':
+            return 'Blocked the author.';
+        case 'unblock':
+            return 'Unblocked the author.';
         case 'reject':
-            return "Rejected #$id (" . (string)($after['reject_reason'] ?? 'other') . ').';
+            $r = (string)($after['reject_reason'] ?? 'other');
+            return "Rejected #$id ($r)" . ($a['actor'] === 'system' && $r === 'abuse' ? ': the author is blocked.' : '.');
         case 'flag':
             return "Flagged #$id for the owner.";
         case 'pending':

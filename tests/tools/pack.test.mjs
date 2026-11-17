@@ -45,7 +45,7 @@ test('pack builds both release zips with the right content', () => {
     assert.match(names[1], /^arghbox-triage-skill-\d+\.\d+\.\d+\.zip$/)
 
     const widget = readZip(fs.readFileSync(path.join(out, names[0]))).map((f) => f.name)
-    for (const must of ['arghbox/arghbox.js', 'arghbox/arghbox-app.js', 'arghbox/api.php', 'arghbox/mcp.php', 'arghbox/lib/db.php', 'arghbox/lib/config.php', 'arghbox/lib/.htaccess', 'arghbox/data/.htaccess', 'arghbox/i18n/en.json', 'arghbox/config.example.php']) {
+    for (const must of ['arghbox/arghbox.js', 'arghbox/arghbox-app.js', 'arghbox/app.html', 'arghbox/app-page.js', 'arghbox/api.php', 'arghbox/mcp.php', 'arghbox/lib/db.php', 'arghbox/lib/config.php', 'arghbox/lib/.htaccess', 'arghbox/data/.htaccess', 'arghbox/i18n/en.json', 'arghbox/config.example.php']) {
       assert.ok(widget.includes(must), must)
     }
     assert.ok(!widget.includes('arghbox/config.php'), 'no owner config.php')

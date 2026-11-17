@@ -32,7 +32,7 @@ async function entryByTitle(stack, title) {
   return e;
 }
 const publicEntry = async (stack, title) => (await stack.list()).entries.find((e) => e.title === title);
-const actionRow = (page, kind) => page.locator('li.action').filter({ has: page.locator('.kind', { hasText: new RegExp('^' + kind + '$', 'i') }) }).first();
+const actionRow = (page, kind) => page.locator('li.action').filter({ has: page.locator('.kind[data-kind="' + kind + '"]') }).first();
 
 test('sign in: wrong token is refused, the right one opens the dashboard', async ({ page, stack }) => {
   await page.goto(stack.adminUrl);
@@ -355,7 +355,7 @@ test('log: undo a single action, and a refusal shows its reason', async ({ page,
   // Undo the newest publish (Button is broken).
   const rowBtn = page.locator('li.action').filter({ hasText: 'Button is broken' }).first();
   await rowBtn.getByRole('button', { name: /^Undo/ }).click();
-  await expect(page.locator('li.action .kind', { hasText: /^undo$/i }).first()).toBeVisible();
+  await expect(page.locator('li.action .kind', { hasText: /^Undo$/ }).first()).toBeVisible();
   expect((await entryByTitle(stack, 'Button is broken')).state).toBe('pending');
   expect(await publicEntry(stack, 'Button is broken')).toBeUndefined();
 
@@ -591,7 +591,7 @@ test('entry history list shows the entry actions with undo', async ({ page, stac
   await expect(c.locator('.notice.ok')).toContainText('Done');
   await c.locator('details.history summary').click();
   const row = c.locator('details.history li.action').first();
-  await expect(row.locator('.kind')).toHaveText('set_status');
+  await expect(row.locator('.kind')).toHaveText('Status changed');
   await row.getByRole('button', { name: /^Undo/ }).click();
   await expect(c.locator('.notice.ok')).toHaveText('Undone.');
   expect((await entryByTitle(stack, 'Map crashes on save')).status).toBe('planned');

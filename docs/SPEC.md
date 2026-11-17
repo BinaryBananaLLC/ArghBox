@@ -38,6 +38,8 @@ fix one of them in the same change. Version 0.1.0.
 arghbox/                  the folder site owners upload, served at /arghbox/
   arghbox.js              loader: tab + JS API, < 4 KB gzipped
   arghbox-app.js          dialog, loaded on first intent, < 20 KB gzipped
+  app.html                the mobile app page: the dialog full screen, for an app's WebView (section 8b)
+  app-page.js             that page's script: URL parameters, loader tag, bridges to the app, < 2 KB gzipped
   i18n/en.json            widget strings (source of truth for translations)
   api.php                 the only PHP entry point for JSON
   admin/index.php         admin page shell (HTML + security headers)
@@ -95,13 +97,16 @@ Version string `0.1.0` appears in `arghbox/VERSION`, `ArghBox.version` in both J
 | `trusted_proxies` | `[]` | Addresses or CIDRs of proxies allowed to set `trusted_ip_header` (default for `HTTP_CF_CONNECTING_IP`: Cloudflare's ranges) |
 | `turnstile_hostnames` | `[]` | Extra hostnames accepted from Turnstile besides the host of `site_url` |
 | `journal_mode` | `'delete'` | `'delete'` or `'wal'` (falls back to delete) |
+| `contact_url` | `''` | Optional `https://`, `http://` or `mailto:` link (at most 300 chars) shown as "Contact" in the dialog footer. Anything else is treated as `''`. App stores ask apps with user posts to publish contact details (section 6b) |
+| `report_hide_at` | `3` | A published visitor entry reported by this many different people (distinct IP hashes, open reports) is hidden until reviewed (section 6b). `0` = never hide automatically. Integer 0 to 100 |
+| `app_pass` | `false` | Opt-in, weaker protection for mobile apps whose WebView cannot pass Turnstile: `session` with `{app: true}` returns a pass without the human check (section 6b). Off by default |
 | `limits` | see below | Rate limits and form checks |
 
 `limits` defaults: `entries_per_hour` 5, `votes_per_hour` 60, `sessions_per_hour` 20,
 `votes_per_ip_per_entry` 3, `admin_logins_per_hour` 10, `pass_ttl_seconds` 1800, `min_fill_ms`
 2500, `max_links` 2, `mcp_calls_per_minute` 120, `mcp_writes_per_minute` 30, `sessions_global_per_hour`
-2000, `auth_failures_global_per_hour` 500, `mine_per_hour` 120. Missing keys fall
-back to defaults (merge, do not replace).
+2000, `auth_failures_global_per_hour` 500, `mine_per_hour` 120, `reports_per_hour` 10, `block_days` 90.
+Missing keys fall back to defaults (merge, do not replace).
 
 **Where config.php is found**, first match wins:
 1. `getenv('ARGHBOX_CONFIG')` (absolute path; used by tests and dev)
@@ -150,9 +155,10 @@ CREATE TABLE entries (
   tags TEXT NOT NULL DEFAULT '[]', -- JSON array of tags, at most 3
   external_url TEXT NULL,          -- admin only: linked issue (Jira, GitHub, Linear), http(s), <= 500 chars
   votes INTEGER NOT NULL DEFAULT 0,
-  context TEXT NOT NULL DEFAULT '{}',  -- JSON {page, lang, browser, os, screen}
+  context TEXT NOT NULL DEFAULT '{}',  -- JSON {page, lang, browser, os, screen, app?: {platform, version}}
   ai TEXT NULL,                    -- JSON, admin only (section 7)
   author_hash TEXT NOT NULL,       -- HMAC of the IP (same as votes.ip_hash); '' for owner items
+  author_voter TEXT NOT NULL DEFAULT '', -- voter_hash of the author (schema 4); '' for owner items and older entries
   receipt_hash TEXT NOT NULL,      -- '' for owner items
   created_at TEXT NOT NULL,        -- ISO 8601 UTC, e.g. 2026-11-14T10:00:00Z
   updated_at TEXT NOT NULL
@@ -181,10 +187,33 @@ CREATE TABLE actions (
   actor TEXT NOT NULL,             -- owner | triage:<reviewer> | system
   run_id INTEGER NULL REFERENCES runs(id),
   kind TEXT NOT NULL,              -- create | publish | reject | merge | flag | pending | private | set_status | tag | edit | comment | comment_edit | undo
+                                   -- | report_hide | dismiss_reports | block | unblock (schema 4, section 6b)
   entry_id INTEGER NOT NULL,
   before TEXT NOT NULL,            -- JSON snapshot of the entry's mutable fields
-  after TEXT NOT NULL,             -- JSON snapshot + {moved_vote_ids: [...]} for merges
+  after TEXT NOT NULL,             -- JSON snapshot + {moved_vote_ids: [...]} for merges, {cleared_report_ids: [...]},
+                                   -- {block_id} or {block_ids: [...]} (section 6b)
   undone_by INTEGER NULL
+);
+CREATE TABLE reports (             -- schema 4: visitors' reports about published entries (section 6b)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES entries(id),
+  reason TEXT NOT NULL,            -- spam | abusive | off_topic | other
+  voter_hash TEXT NOT NULL,
+  ip_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  cleared_at TEXT NULL,            -- set when reviewed: the entry was kept or published again
+  cleared_by INTEGER NULL,         -- the action that cleared it
+  UNIQUE(entry_id, voter_hash)
+);
+CREATE TABLE blocks (              -- schema 4: authors blocked by the owner or triage (section 6b)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL,       -- the entry the block was made from
+  author_hash TEXT NOT NULL,       -- the entry's author_hash ('' when unknown)
+  voter_hash TEXT NOT NULL,        -- the entry's author_voter ('' when unknown)
+  note TEXT NOT NULL DEFAULT '',   -- admin only, at most 500 chars
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,        -- created_at + limits.block_days
+  lifted_at TEXT NULL
 );
 CREATE TABLE runs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,7 +227,9 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ```
 
 Indexes on `entries(state)`, `votes(entry_id)`, `votes(ip_hash, entry_id)`, `actions(entry_id)`,
-`actions(run_id)`. Add more if useful; the column names above are the contract.
+`actions(run_id)`, `reports(entry_id)`, `blocks(author_hash)`, `blocks(voter_hash)`. Add more if useful; the column
+names above are the contract. Schema version 4 adds `entries.author_voter`, `reports` and `blocks`; the migration
+leaves `author_voter` empty on older entries.
 
 **Hashes** (all `hash_hmac('sha256', <label>|<value>, secret)`, hex):
 `ip|<ip>` → `ip_hash`/`author_hash`; `voter|<voter key>` → `voter_hash`;
@@ -219,8 +250,9 @@ state `private` (or `published` if the owner ticks "public"). Private items are 
 public API, never in the triage decisions, and have no votes. The owner can publish one later
 (state `private` → `published`) or make a published owner item private again.
 
-**Fingerprint**: first 16 hex chars of `sha256(id|state|status|type|title|body|merged_into)`.
-Changes whenever an entry is changed, so a triage decision made on stale data is skipped.
+**Fingerprint**: first 16 hex chars of `sha256(id|state|status|type|title|body|merged_into)`, and when the entry
+has open reports (section 6b), `|r:` plus their ids in ascending order joined by commas is appended before hashing.
+Changes whenever an entry is changed or reported again, so a triage decision made on stale data is skipped.
 
 **Invariants**
 - Nothing is ever deleted (except `limits` rows older than 1 day, trimmed during writes).
@@ -272,9 +304,10 @@ items the owner published from the admin page (shown with an "From the team" lab
 
 | Action | Method | Request | Response |
 |---|---|---|---|
-| `list` | GET | header `X-ArghBox-Voter` (optional) | `{ok, site:{name}, welcome, max_links (= `limits.max_links`; one link is one `http(s)://...` URL or one bare `www....` address, so `https://www.a.com` is one), version, turnstile_site_key, moderation, credit, entries:[Entry], tag_counts:[{tag, count}], voted:[id]}`. All `published` entries of every status (open, planned, in progress, done, declined), sorted by votes desc then newest, at most 500. Never private, pending, flagged, rejected or merged entries. `tag_counts` covers the listed entries, most used first. `voted` lists the entry ids this voter key voted on. No Turnstile needed. |
-| `session` | POST | `{turnstile}` | `{ok, pass, expires_at}`. Verifies the Turnstile token with `turnstile_secret_key` (sends `remoteip` too). Rate-limited by `sessions_per_hour`. |
-| `add` | POST | `{pass, voter, type, title, body, context:{page, lang, browser, os, screen}, hp, elapsed_ms}` | `{ok, entry: Entry + {state}, receipt}`. `state` is `pending` or `published` (config `moderation`). |
+| `list` | GET | header `X-ArghBox-Voter` (optional) | `{ok, site:{name}, welcome, max_links (= `limits.max_links`; one link is one `http(s)://...` URL or one bare `www....` address, so `https://www.a.com` is one), version, turnstile_site_key, moderation, credit, contact (= `contact_url`, `''` when unset), app_pass (bool, config `app_pass`), entries:[Entry], tag_counts:[{tag, count}], voted:[id]}`. All `published` entries of every status (open, planned, in progress, done, declined), sorted by votes desc then newest, at most 500. Never private, pending, flagged, rejected or merged entries. `tag_counts` covers the listed entries, most used first. `voted` lists the entry ids this voter key voted on. No Turnstile needed. |
+| `session` | POST | `{turnstile}` or `{app: true}` | `{ok, pass, expires_at}`. Verifies the Turnstile token with `turnstile_secret_key` (sends `remoteip` too). Rate-limited by `sessions_per_hour`. `{app: true}` without a `turnstile` token: a pass without the human check when config `app_pass` is true (same rate limits), else 403 `turnstile_failed` (section 6b). |
+| `add` | POST | `{pass, voter, type, title, body, context:{page, lang, browser, os, screen, app?}, hp, elapsed_ms}` | `{ok, entry: Entry + {state}, receipt}`. `state` is `pending` or `published` (config `moderation`); always `pending` when the author is blocked (section 6b). |
+| `report` | POST | `{pass, voter, id, reason}` | `{ok, id}`. A visitor reports a published visitor entry; `reason` is `spam`, `abusive`, `off_topic` or `other`. See section 6b. |
 | `vote` | POST | `{pass, voter, id, on}` | `{ok, id, votes, voted}`; `id` is the final target after merges. `on:false` removes this voter's vote (only a direct vote, never a moved one). Voting again when already voted is not an error: returns current state. |
 | `mine` | POST | `{receipts:[string]}` (at most 50) | `{ok, entries:[{receipt, id, type, title, state, status, tags, comments, merged_into, merged_into_title, reject_reason}]}`. Lets visitors see what happened to their own entries, including why one was not published (`reject_reason`), and where a merged one went. `flagged` is reported as `pending` (the owner's queue is not the visitor's business). |
 | `feed` | GET | | Atom 1.0 (`Content-Type: application/atom+xml; charset=utf-8`, `Cache-Control: public, max-age=600`): the 50 most recently updated published entries. Each item has the title prefixed with its status when it is not open ("[Done] Dark mode"), the body plus the latest public comment as text content, `updated` = `updated_at`, and a link to `site_url` + `#arghbox-<id>`. Feed id and title come from `site_url` and `site_name`. Lets people follow the backlog and changelog in any feed reader, or pipe it into Slack or Zapier. |
@@ -298,10 +331,108 @@ base64url of 18 bytes) and kept in localStorage `arghbox:voter`.
 - `context.page`: must start with `/`, query and hash stripped server-side too, max 200 chars;
   `lang` max 12 `[A-Za-z-]`; `browser`, `os` max 40 chars; `screen` in `small`, `medium`,
   `large` (anything else dropped)
+- `context.app` (sent by the mobile app page, section 8b): an object `{platform, version}`; `platform` in `ios`,
+  `android`, `other`; `version` 1 to 20 chars of `[0-9A-Za-z._+-]`. Invalid members are dropped; when neither
+  survives, `app` is dropped. Never an error.
 
 **Rate limits** (per `ip_hash`, sliding by the hour window): `entries_per_hour`,
-`votes_per_hour`, `sessions_per_hour`; `votes_per_ip_per_entry` counts the votes from one
+`votes_per_hour`, `sessions_per_hour`, `reports_per_hour`; `votes_per_ip_per_entry` counts the votes from one
 `ip_hash` on one entry.
+
+## 6b. Reports, blocks and the app pass
+
+These exist so the box is safe to show inside mobile apps, and they help on the web too. App Store guideline 1.2
+(and Google Play's user-generated content policy) ask apps that show other people's posts for: a way to filter
+objectionable content (ArghBox: nothing is public before review), a way to report it with a timely response
+(reports below), a way to block abusive users (blocks below) and published contact details (`contact_url`).
+
+**Reports.**
+- `POST report {pass, voter, id, reason}` needs a valid pass and voter key, like `vote`.
+- `reason`: `spam`, `abusive`, `off_topic` or `other`; anything else is `invalid_input` with `field: "reason"`.
+- Only a `published` entry with `source: visitor` can be reported. Any other id (unknown, pending, merged, rejected,
+  private, owner items) answers 404 `not_found`.
+- Rate limit `reports_per_hour` per IP hash (429 `rate_limited`).
+- One report per voter key per entry: reporting again answers `{ok: true, id}` and changes nothing.
+- When the caller's IP hash or voter hash matches an active block, the answer is the same `{ok: true, id}`, and
+  nothing is stored.
+- The answer never says whether the entry was hidden.
+- A report is **open** while `cleared_at` is null. The number of **reporters** of an entry is
+  `COUNT(DISTINCT ip_hash)` over its open reports.
+
+**Auto-hide.** In the same transaction as the insert: when `report_hide_at > 0`, the entry is `published`, and its
+reporters reach `report_hide_at`, the entry's state becomes `pending`. That is logged as action `report_hide`, actor
+`system`, an entry-field action like `pending`. It leaves the public list and the feed and waits in the owner's and
+triage's pending queue. The author's `mine` shows "waiting for review". Undoing it restores `published`.
+
+**Clearing reports** (the entry was reviewed and kept):
+- `admin.dismiss_reports {id}`, or a triage `keep` decision: sets `cleared_at` and `cleared_by` on every open
+  report of the entry. Logged as `dismiss_reports` with `after.cleared_report_ids`. Undo sets them open again.
+- Any change of an entry's state to `published` (`admin.update`, an `admin.apply` publish, a publish through MCP)
+  also clears its open reports, as part of that same action (`after.cleared_report_ids`). Undoing that action
+  re-opens them.
+- Rejecting, flagging or merging does not clear reports.
+
+**Blocks.**
+- `admin.block {id, note?}` blocks the author of visitor entry `id`: one `blocks` row with the entry's
+  `author_hash` and `author_voter`, `expires_at` = now + `limits.block_days` days. Logged as `block` with
+  `after.block_id`; undo lifts it (`lifted_at`).
+- Owner items answer 409 `conflict` (no author). An author with an active block matching both hashes is not blocked
+  twice: the answer is ok and nothing is logged.
+- `admin.unblock {id}` lifts every active block whose `author_hash` (when non-empty) equals the entry's
+  `author_hash` or whose `voter_hash` (when non-empty) equals its `author_voter`. Logged as `unblock` with
+  `after.block_ids`; undo re-activates them.
+- A block is **active** while `lifted_at` is null and `expires_at` is in the future. A request matches it when its IP
+  hash equals a non-empty `author_hash`, or its voter hash equals a non-empty `voter_hash`.
+- Effects of a matching block:
+  - `add` is stored, but as `rejected` with `reject_reason: abuse` (logged as `reject`, actor `system`, summary
+    saying the author is blocked), and answers exactly like a normal add, including the `state` that `moderation`
+    would give, so the author cannot tell. The owner can still find and publish it, because blocks by IP can catch
+    innocent people behind the same mobile carrier address.
+  - `report` is ignored as above.
+  - Votes are not affected.
+- `dismiss_reports`, `block` and `unblock` actions neither block nor are blocked by the undo of entry-field actions
+  (like comment actions). `report_hide` is an entry-field action. Among themselves, `block` and `unblock` actions
+  on the same entry follow the usual rule: undoing one is refused (409 `conflict`) while a later `block` or
+  `unblock` on that entry is not undone.
+
+**Admin side.**
+- The admin entry object adds `reports: {open, total, reasons: {spam, abusive, off_topic, other}, last_at}`.
+  `reasons` counts open reports only, and `last_at` is the newest open report or null. It also adds
+  `author_blocked` (bool, an active block matches the entry's author).
+- `admin.queue` adds `reported: [AdminEntry]`: published visitor entries with at least one open report, oldest open
+  report first. Pending entries keep their `reports`, so the AI sees why an auto-hidden entry came back.
+- An entry is **reported** when it has at least one open report and its state is `published`, `pending` or
+  `flagged` (rejected and merged entries are settled, whatever their reports).
+- `admin.entries` accepts `reported=1` (reported entries, as just defined) and `blocked=1` (visitor entries whose
+  author matches an active block).
+- `admin.stats` adds `counts.reported` (reported entries, as defined above, so it equals the admin page's Reported
+  list) and `blocks` (number of active blocks).
+- Triage actors may call `admin.dismiss_reports`, `admin.block` and `admin.unblock`. None of them puts text on the
+  public board.
+
+**Triage decisions** (section 7), in addition:
+- `keep` is allowed only on a published entry with open reports: it clears them, logged `dismiss_reports` with the
+  `run_id` and the reviewer's note in `after.ai` (`{action, confidence, reason, reviewer, run_id, at}`), so the log
+  shows why.
+- `reject` is also allowed on a published visitor entry with open reports.
+- Below `auto_apply_min_confidence`, `keep` and such a `reject` are skipped with `low_confidence`, not flagged: the
+  entry stays public and stays in the owner's Reported list.
+- `block_author: true` is optional on any `reject` whose `reject_reason` is `spam` or `abuse`. It is applied only
+  when the reject itself is applied (not when it is flagged or skipped) and is logged `block` with the `run_id`. On
+  other actions or reasons it is `invalid_input`. The `applied` row of such a decision carries `blocked` (bool):
+  false when the author was already blocked or has no author hashes. Neither case fails the reject or the batch.
+- Run counts add `keep` and `block`. `keep` is ordered with publish, reject and flag (before merges).
+
+**App pass (opt-in).**
+- When config `app_pass` is true, `POST session {app: true}` (no `turnstile`) returns a normal pass (same format,
+  TTL and IP binding) without asking Cloudflare. It uses the same `sessions_per_hour` and `sessions_global_per_hour`
+  limits.
+- It is a weaker model, common in mobile apps: any client can ask for it, so it proves neither a human nor a
+  genuine app. Posts stay safe because they wait for review; votes are then limited only by
+  `votes_per_ip_per_entry` and `votes_per_hour`, and the web widget's Turnstile no longer adds protection.
+- `health` reports `app_pass` (bool) to everyone. For authorised callers, `warnings` adds: "app_pass is on: anyone
+  can get a pass without the human check, so votes are limited only by the per-IP caps."
+- With a `turnstile` token in the body, the Turnstile path is used as before.
 
 ## 7. Admin API
 
@@ -324,15 +455,15 @@ HTTPS (or `X-Forwarded-Proto: https`), path = the folder of `api.php`. CSRF toke
 `hmac('csrf|' . cookie value)`.
 
 **Admin entry object** = public entry + `state, merged_into, reject_reason, external_url,
-title_original, body_original, context, ai, author, fingerprint, updated_at`, and `comments` lists every comment
-as `{id, body, public, hidden, created_at, updated_at}`.
+title_original, body_original, context, ai, author, fingerprint, updated_at, reports, author_blocked` (section 6b),
+and `comments` lists every comment as `{id, body, public, hidden, created_at, updated_at}`.
 
 | Action | Method | Request | Response |
 |---|---|---|---|
 | `admin.login` | POST | `{token}` (owner token only) | sets cookie; `{ok, csrf}` |
 | `admin.logout` | POST | | clears cookie; `{ok}` |
 | `admin.me` | GET | | `{ok, actor, csrf}` (csrf only for cookie sessions) |
-| `admin.queue` | GET | | `{ok, site:{name, url, about}, moderation, auto_apply_min_confidence, tags:[{tag, count}] (vocabulary incl. config presets with count 0), pending:[AdminEntry], flagged:[AdminEntry], published:[{id, type, title, body (first 300 chars), votes, status, tags, aliases, fingerprint}], private:[{id, type, title, status, tags}]}`. Pending oldest first. `private` is context only (the owner's own tasks). |
+| `admin.queue` | GET | | `{ok, site:{name, url, about}, moderation, auto_apply_min_confidence, tags:[{tag, count}] (vocabulary incl. config presets with count 0), pending:[AdminEntry], flagged:[AdminEntry], published:[{id, type, title, body (first 300 chars), votes, status, tags, aliases, fingerprint}], private:[{id, type, title, status, tags}], reported:[AdminEntry]}`. Pending oldest first. `private` is context only (the owner's own tasks). `reported`: section 6b. |
 | `admin.apply` | POST | `{run:{reviewer, digest}, decisions:[Decision]}` | `{ok, run_id, applied:[{id, action, flagged_instead:bool}], skipped:[{id, reason}]}` |
 | `admin.create` | POST | `{type, title, body?, status?, tags?, public?:bool}` | `{ok, entry: AdminEntry}`. Owner's own item: `source: owner`, state `private` (or `published` when `public` is true), no votes. Validated like `add` but no Turnstile, no link limit. |
 | `admin.entry` | GET | `?id=` | `{ok, entry: AdminEntry, actions:[last 20 log rows for it]}` |
@@ -341,23 +472,28 @@ as `{id, body, public, hidden, created_at, updated_at}`.
 | `admin.comment` | POST | `{id, body, public?:bool}` (default public) | `{ok, comment, entry: AdminEntry}` |
 | `admin.comment_update` | POST | `{comment_id, body?, public?, hidden?}` | `{ok, comment, entry: AdminEntry}` |
 | `admin.undo` | POST | `{action_id}` or `{run_id}` | `{ok, undone:[action_id], refused:[{action_id, reason}]}` |
-| `admin.entries` | GET | `?state=&status=&type=&source=&tag=&q=&sort=newest\|oldest\|votes&limit=50&offset=0` | `{ok, total, entries:[AdminEntry]}`, newest first by default; `q` searches title, body and comments |
+| `admin.entries` | GET | `?state=&status=&type=&source=&tag=&q=&reported=1&sort=newest\|oldest\|votes&limit=50&offset=0` | `{ok, total, entries:[AdminEntry]}`, newest first by default; `q` searches title, body and comments; `reported=1` keeps entries with open reports |
+| `admin.dismiss_reports` | POST | `{id}` | `{ok, entry: AdminEntry}`. Clears the entry's open reports (section 6b) |
+| `admin.block` | POST | `{id, note?}` | `{ok, entry: AdminEntry}`. Blocks the author of a visitor entry (section 6b) |
+| `admin.unblock` | POST | `{id}` | `{ok, entry: AdminEntry}`. Lifts the active blocks matching that entry's author |
 | `admin.log` | GET | `?run_id=&entry_id=&limit=100&offset=0` | `{ok, total, actions:[{id, at, actor, run_id, kind, entry_id, entry_title, summary, undone_by, undoable}]}` newest first; `summary` is a short English sentence |
 | `admin.runs` | GET | `?limit=20` | `{ok, runs:[{id, at, reviewer, counts, digest}]}` newest first |
-| `admin.stats` | GET | | `{ok, counts:{pending, published, rejected, merged, flagged, private}, votes, entries_last_7_days, last_run: Run\|null}` |
+| `admin.stats` | GET | | `{ok, counts:{pending, published, rejected, merged, flagged, private, reported}, votes, blocks, entries_last_7_days, last_run: Run\|null}` |
 
 **Decision** (from the triage skill):
 ```json
-{ "id": 31, "fingerprint": "9f2c...", "action": "publish | reject | merge | flag | tag",
+{ "id": 31, "fingerprint": "9f2c...", "action": "publish | reject | merge | flag | tag | keep",
   "merge_into": 4, "type": "idea | bug | question", "title": "Cleaned title (optional)",
   "tags": ["export", "kml"], "reject_reason": "spam | abuse | off_topic | test | unclear | other",
+  "block_author": false,
   "confidence": 92, "reason": "Admin-only explanation, at most 500 chars",
   "title_en": "English translation for the owner (optional, at most 200 chars)" }
 ```
 Server rules for `admin.apply`:
-- Decisions may target `pending` entries (any action except `tag`) and `published` visitor or
-  owner entries (`merge` or `tag` only). Anything else is skipped with `invalid_state`. Unknown
-  id: `not_found`. Fingerprint differs: `changed`.
+- Decisions may target `pending` entries (any action except `tag` and `keep`) and `published` visitor or
+  owner entries (`merge` or `tag` only; plus `keep` or `reject` when it has open reports, section 6b). Anything
+  else is skipped with `invalid_state`. Unknown id: `not_found`. Fingerprint differs: `changed`.
+- `block_author` (optional, default false): section 6b.
 - `tags` (0 to 3, format above) is allowed on `publish`, `flag` and `tag` (required for `tag`);
   it replaces the entry's tags. `reject_reason` is required on `reject`. A `tag` decision never
   turns into a flag and is applied whatever the confidence.
@@ -486,7 +622,7 @@ Names are prefixed `arghbox_`.
 | Tool | Scope | Maps to |
 |---|---|---|
 | `arghbox_stats` | read | `admin.stats` |
-| `arghbox_list_pending` | read | pending + flagged from `admin.queue`. Bodies cut to 600 chars; `limit` (default 20, max 50) and `offset`. |
+| `arghbox_list_pending` | read | pending + flagged + reported from `admin.queue`. Bodies cut to 600 chars; `limit` (default 20, max 50) and `offset`. |
 | `arghbox_list_entries` | read | `admin.entries`. Filters `state, status, type, source, tag, q, sort`; `limit` up to 50; compact rows. |
 | `arghbox_search` | read | `admin.entries?q=` with a snippet per hit |
 | `arghbox_get_entry` | read | `admin.entry` |
@@ -501,6 +637,12 @@ Names are prefixed `arghbox_`.
 | `arghbox_reject` | write, destructive hint | reject with a `reject_reason` |
 | `arghbox_create_task` | write | `admin.create`, private by default. `public: true` needs `triage_public_writes`. |
 | `arghbox_undo` | write, destructive hint | `admin.undo` (`action_id` or `run_id`) |
+| `arghbox_dismiss_reports` | write | `admin.dismiss_reports` (`id`): keep a reported entry |
+| `arghbox_block_author` | write, destructive hint | `admin.block` (`id`, optional `note`) |
+| `arghbox_unblock_author` | write | `admin.unblock` (`id`) |
+
+`context.app.platform` and `context.app.version` are visitor text: they are listed in `untrusted.fields` like the
+other context fields.
 
 - **Annotations.** Read tools `{readOnlyHint: true, openWorldHint: false}`; write tools
   `readOnlyHint: false`. Merge, reject and undo also carry `destructiveHint: true`.
@@ -637,6 +779,15 @@ window.ArghBox = {
       aliases, tags and the start of the body; lowercase, accents and punctuation stripped,
       word overlap plus prefix matches.
   - Thanks: "Your argh is in the box." (pending) or "Your argh is up." (publish mode).
+  - **Report** (section 6b): the detail view of a visitor entry (never `source: owner`) has a small "Report"
+    button. It opens an inline choice of four reasons (Spam, Rude or abusive, Not about this site or app,
+    Something else) with "Send report" and "Cancel". Sending needs a pass, like voting. On success the entry id
+    joins localStorage `arghbox:reported` (array of ids, at most 200, newest kept; not `arghbox:hidden`, which is the
+    loader's tab-dismissal time), the dialog goes back to the list
+    and shows "Thanks. We will take a look. You will not see this one again." Hidden ids are left out of the
+    list, the search, the similar suggestions and the tag counts shown. Errors use the usual friendly strings.
+  - **Contact**: when `list.contact` is set, the footer shows a "Contact" link to it (`target="_blank"`,
+    `rel="noopener"`).
 - **Context sent with `add`**: `page` = `location.pathname` only; `lang` = page language;
   `browser` and `os` = coarse family from `navigator.userAgentData` or the UA string (e.g.
   "Chrome", "Firefox", "Safari", "Edge"; "Windows", "macOS", "Android", "iOS", "Linux");
@@ -687,6 +838,81 @@ fall back to `.other`, then to English. `_meta` key holds `{lang, name, version}
   - right-to-left layouts
   - list virtualisation (up to 500 entries are rendered at once)
 
+## 8b. Mobile apps: the app page (`app.html`)
+
+A native app (Swift, Kotlin, React Native, Flutter, ...) shows the box by opening
+`https://example.com/arghbox/app.html` in a WebView. Visitors see the whole board (list, search, vote, add,
+"Your arghs", report) with no sign-in. The page is on the site's own host, so Turnstile accepts it like the web
+widget (Cloudflare supports Turnstile in WebViews, with JavaScript and DOM storage enabled). The voter key and
+receipts live in the WebView's localStorage, which persists per app install.
+
+**URL parameters** (all optional; invalid values are ignored, never echoed into the page):
+
+| Parameter | Values | Effect |
+|---|---|---|
+| `platform` | `ios`, `android`, `other` (any letter case) | `context.app.platform` |
+| `version` | 1 to 20 chars of `[0-9A-Za-z._+-]`; a space is read as `+`, because an unencoded `+` arrives as a space | `context.app.version` (the app's version) |
+| `from` | a path starting with one `/` (not `//`), at most 200 chars, no `?`, `#` or whitespace | `data-page`: the app screen the feedback came from, e.g. `/settings` (default `/`) |
+| `view` | `list`, `add` | what opens first (default `list`) |
+| `type` | `idea`, `bug`, `question` | preselected type of the add form |
+| `theme` | `auto`, `light`, `dark` | `data-theme` (default `auto`) |
+| `accent` | `#rgb` or `#rrggbb` | `data-accent` |
+| `lang` | 2 to 12 chars of `[A-Za-z-]` | `data-lang` |
+| `tone` | `funny`, `neutral` | `data-tone` |
+
+A hash `#arghbox-<id>` (or `#arghbox-add`, `#arghbox-bug`) opens that view, as on the web.
+
+**`app.html`**:
+- Static HTML, `<!doctype html>`, `lang="en"`, `<title>Feedback</title>`, `<meta name="robots" content="noindex">`,
+  `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`, `color-scheme: light
+  dark`, and a body background that matches the theme, so there is no white flash.
+- A `<meta http-equiv="Content-Security-Policy">`: `default-src 'self'; script-src 'self'
+  https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self'
+  data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'`.
+- No inline script: it loads `app-page.js?v=<version>`. The version in `app.html` is kept equal to the others by
+  the version test.
+- A `<noscript>` line says the page needs JavaScript.
+
+**`app-page.js`** (ES2019, no modules, < 2 KB gzipped, checked by `tools/check-size.mjs`):
+- Reads and validates the parameters.
+- Sets `window.ArghBoxConfig = {app: {platform, version}}` (only the valid members; `{}` when none). Then it
+  appends the loader `<script src="arghbox.js?v=<version>">` with `data-tab="off"`, `data-credit` left on, and the
+  `data-page`, `data-theme`, `data-accent`, `data-lang` and `data-tone` attributes from the parameters.
+- When the loader is ready, it calls `ArghBox.open({view, type})`, unless the hash already routes to a view.
+- **Bridge to the app**: on `arghbox:open`, `arghbox:close`, `arghbox:add` and `arghbox:vote`, it posts
+  `{source: "arghbox", type: "open" | "close" | "add" | "vote", detail}` (the event's detail, never visitor text) to
+  every bridge that exists:
+  - React Native: `window.ReactNativeWebView.postMessage(JSON string)`
+  - iOS WKWebView: `window.webkit.messageHandlers.arghbox.postMessage(object)`
+  - Android: `window.ArghBoxAndroid.postMessage(JSON string)` (an `addJavascriptInterface` object)
+  - Flutter: `window.ArghBoxFlutter.postMessage(JSON string)` (a `JavaScriptChannel`; not named `ArghBox`, which is
+    the widget's API)
+- **External links**: the dialog's links (Contact, the credit link, links in the owner's comments; visitor text is
+  never linked) open with `target="_blank"`, which a WKWebView ignores and other WebViews open in place. So
+  `app-page.js` listens for clicks (using `composedPath()` to see into the open shadow root): when a bridge exists,
+  a click on an `http(s):` or `mailto:` link prevents the default and posts `{source: "arghbox", type: "link",
+  detail: {url}}`, and the app opens it in the system browser. Without a bridge the link behaves normally.
+- **Delivery**: a bridge counts as reached only when its `postMessage` returned without throwing.
+- **Load failure**: when the loader script fails to load, the page shows "Feedback could not load" with a "Try
+  again" button that reloads the page.
+- **Close**: on `arghbox:close`, after posting, when no bridge exists, it navigates to the fixed URL
+  `arghbox://close`, which an app without a bridge intercepts. The URL is fixed and never taken from a parameter,
+  so there is no open redirect. It then shows a small "Feedback closed" screen with an "Open again" button (what a
+  normal browser shows, since nothing intercepts the URL).
+
+**Page mode in `arghbox-app.js`**: active when `window.ArghBoxConfig.app` is an object.
+- The dialog is a full-screen sheet at every width. Its content is at most 640 px wide and centred, with
+  `env(safe-area-inset-*)` padding. There is no backdrop to tap. Esc and the close button still close it.
+- `add` sends `context.app` (validated as in section 6) and `context.page` from `data-page`.
+- When `list.app_pass` is true, the pass comes from `session {app: true}` and Turnstile is not loaded at all.
+  Otherwise it is Turnstile, as on the web.
+
+**Hosting**: `.htaccess` serves `app-page.js` like the other scripts (`max-age=3600`, busted with `?v=`), and
+`app.html` with `Cache-Control: no-cache, no-transform` (no-transform stops Cloudflare injecting its analytics
+script, which the CSP would block), `X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'none'`
+(a meta CSP cannot set frame-ancestors). `admin.css` and `admin.js` get `no-cache, no-transform` too, because they
+load without `?v=`. `tools/install.mjs` copies both with the rest of the folder.
+
 ## 9. Admin page (`/arghbox/admin/`)
 
 - `admin/index.php` sends `Cache-Control: no-store, no-transform` (so proxies such as Cloudflare
@@ -698,8 +924,22 @@ fall back to `.other`, then to English. `_meta` key holds `{lang, name, version}
   load decides between sign-in and dashboard. Sign out button.
 - Dashboard: counts per state, the last run with its digest (rendered as plain text with line
   breaks, never as HTML), entries in the last 7 days.
-- Entry lists by state with search, type filter and tag filter: Pending, Flagged, Published,
-  Rejected, Merged, and **My tasks**.
+- Entry lists by state with search, type filter and tag filter: Pending, Flagged, **Reported**
+  (`admin.entries?reported=1`, any state), Published, Rejected, Merged, and **My tasks**. The dashboard shows the
+  reported count and the number of active blocks, and the Reported list comes right after Pending.
+- An entry with reports shows "Reported by N people: spam 2, rude 1" (open reports), the time of the last one, and
+  "Hidden after reports" when it is pending with open reports. A published one has **Keep it (dismiss reports)**
+  (`admin.dismiss_reports`); a hidden (pending) one has **Put it back (dismiss reports)**, which publishes it
+  (`admin.update state=published`, which clears its reports), next to the usual reject.
+- The Reported tab's count equals `counts.reported`. The dashboard mentions reported entries next to the pending
+  ones, and its "Active author blocks" count opens the entries whose author is blocked (`admin.entries?blocked=1`).
+- The log shows readable labels for every kind ("Hidden after reports", "Reports dismissed", "Author blocked",
+  "Author unblocked"), never the raw kind names. The block confirmation says the block lasts 90 days by default
+  (`limits.block_days`) and can be undone.
+- Visitor entries have **Block author** (confirm first, optional note) or, when `author_blocked`, **Unblock
+  author**, and an "Author blocked" badge. The log shows readable summaries for `report_hide`,
+  `dismiss_reports`, `block` and `unblock`.
+- The context line shows the app when present ("App: iOS 2.3.1").
 - **My tasks** are the owner's private items, with a "New task" form: type, title, details,
   status, tags, and a "public" checkbox. A task can be made public later, and a public owner
   item can be made private again.
@@ -752,8 +992,15 @@ Files: `skill/arghbox-triage/` — `SKILL.md`, `PROMPT.md`, `RULES.md`, `triage.
 }
 ```
 `check` rules:
-- Coverage: every pending entry in `queue.json` has exactly one decision. Flagged and private
-  entries in the queue are context only (the owner's queue and tasks) and get no decision.
+- Coverage: every pending entry in `queue.json` has exactly one decision, and so does every entry in `reported`
+  (`keep` or `reject` only, section 6b). Flagged and private entries in the queue are context only (the owner's
+  queue and tasks) and get no decision.
+- `block_author: true` only on a `reject` with `reject_reason` `spam` or `abuse`.
+- `fetch` prints `Nothing to triage.` only when there are no pending and no reported entries. `packet.md` has a
+  "Reported" section (each entry with its open report count and reasons), and pending entries show their reports
+  ("hidden after 3 reports"). `RULES.md` says a report is a signal, not a verdict: keep entries that are merely
+  unpopular or critical, reject spam, abuse and off-topic posts, and set `block_author` only for clear spam or abuse
+  with confidence 90 or more.
 - Allowed actions: on published entries only `merge` or `tag`; `tag` only on published
   entries.
 - Ids exist, and fingerprints match `queue.json`.
@@ -780,9 +1027,9 @@ Files: `skill/arghbox-triage/` — `SKILL.md`, `PROMPT.md`, `RULES.md`, `triage.
 
 ### The npm package
 
-`arghbox` on npmjs.com holds the `arghbox/` folder (without `config.php`, databases, `data/` contents, logs and `.bak` files), the triage skill, `bin/`, `index.mjs`/`index.d.ts`, `tools/install.mjs` and `tools/new-secrets.mjs`. It has no runtime dependencies. `package.json`, `arghbox/VERSION`, `lib/version.php` and the CHANGELOG heading always carry the same version (`tests/tools/package.test.mjs`). `.github/workflows/release.yml` publishes a version from a `vX.Y.Z` tag: it runs the unit tests, builds the zips and the npm tarball with build provenance attestations, creates the GitHub Release (draft first, then published), and publishes to npm with provenance (`--tag next` for pre-release versions). `publishConfig.provenance` makes a local `npm publish` fail, so releases only come from the workflow.
+`arghbox` on npmjs.com holds the `arghbox/` folder (without `config.php`, databases, `data/` contents, logs and `.bak` files), the triage skill, `bin/`, `index.mjs`/`index.d.ts`, `tools/install.mjs` and `tools/new-secrets.mjs`. It has no runtime dependencies. `package.json`, `arghbox/VERSION`, `lib/version.php` and the CHANGELOG heading always carry the same version (`tests/tools/package.test.mjs`). `.github/workflows/release.yml` publishes a version only when the owner runs it (Actions, Release, Run workflow, or a pushed `vX.Y.Z` tag). It checks the tag against package.json, npm and existing releases, builds the zips and the npm tarball with build provenance attestations, creates the GitHub Release (draft first, then published), and publishes to npm with `--provenance` (`--tag next` for pre-release versions). It runs no tests. `publishConfig` has no `provenance`, so a local `npm publish` works too.
 | `tools/translate.mjs <lang...> [--paid] [--all]` | **Owner only, paid** (Azure OpenAI). Translates missing or changed keys of `arghbox/i18n/en.json` into `i18n/<lang>.json`, updates the LABELS and LANGS blocks in `arghbox.js`. Reads `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` from the environment or the git-ignored `.secrets/azure-openai.json`. Without `--paid` it only prints what it would send and costs nothing. Agents never run it with `--paid`. |
-| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB or `arghbox-app.js` > 20 KB gzipped. |
+| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB, `arghbox-app.js` > 20 KB or `app-page.js` > 2 KB gzipped. |
 | `tools/render-art.mjs` | Renders the PNG art (favicons into `art/brand/`, social card, README banner) from `art/` sources with Playwright. |
 | `tools/capture.mjs` | Takes the README screenshots of the real widget and admin page (on the demo page) with Playwright into `docs/images/`. |
 
@@ -795,5 +1042,10 @@ Files: `skill/arghbox-triage/` — `SKILL.md`, `PROMPT.md`, `RULES.md`, `triage.
   `tools/dev.mjs`-style servers started by Playwright `webServer` or a global setup. Turnstile's
   `api.js` is replaced with a stub via `page.route` so tests run offline.
 - `npm run test:all` runs both plus `check-size`.
-- CI: `.github/workflows/ci.yml` on push and pull request: PHP 8.1 and 8.4 matrix
-  (shivammathur/setup-php with pdo_sqlite), Node 22, `npm ci`, Playwright Chromium, `npm run test:all`.
+- Reports, blocks, the app pass and `context.app` have API tests (`tests/api/reports.test.mjs`,
+  `tests/api/app.test.mjs`), MCP tests and triage `check` tests. The app page has a Playwright spec
+  (`e2e/app-page.spec.mjs`, phone and desktop) that fakes the four bridges with `addInitScript`. The widget's
+  Report flow and the admin page's Reported list each have Playwright tests.
+- No CI and no test automation on GitHub (owner decision 2026-11-17, after a CI matrix with macOS and Windows
+  used the whole month of free minutes while the repo was private). Tests run locally: `npm run test:all`. The only
+  workflow is the owner-run release; Dependabot opens grouped pull requests once a month.

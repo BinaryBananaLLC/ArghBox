@@ -154,7 +154,15 @@ ArghBox's protection files (`.htaccess`) only work on Apache and LiteSpeed. **Op
 - ArghBox also writes a deny-all `.htaccess` into its data folder, which only helps on Apache and LiteSpeed.
 - Test it: `https://example.com/arghbox/config.php`, `.../arghbox/lib/db.php` and `.../arghbox-private/` must not show anything.
 
+### If your site's own `.htaccess` sets security headers
+
+ArghBox sends its own headers: the admin page's `Content-Security-Policy`, `X-Frame-Options` and `Cache-Control: no-store, no-transform`, and the API's `no-store`. On LiteSpeed (Hostinger), a `Header always set ...` in a parent `.htaccess` (for example your site's root) **replaces** the header PHP sent, and `SetEnvIf` is ignored, so a rule meant to skip `/arghbox/` may not work. If your site sets global security or cache headers, leave `/arghbox/` out of them, or check the admin page's headers in the browser's network tab after deploying. Hostinger also adds `Content-Security-Policy: upgrade-insecure-requests` to PHP pages; that one is harmless.
+
+`no-transform` matters behind Cloudflare: without it, Cloudflare may inject its Web Analytics script into the admin page and `app.html`, and their content security policy blocks it (a console error, nothing breaks).
+
 Also check that the protected files really are blocked. `https://example.com/arghbox/config.php`, `https://example.com/arghbox/config.example.php` and `https://example.com/arghbox/data/arghbox.sqlite` (if the database is in `data/`) must answer 403 or 404, and never download anything. `https://example.com/arghbox/lib/db.php` should answer 403, 404 or an empty page.
+
+Building a mobile app? It can show the board in a WebView with `arghbox/app.html`, no sign-in needed: see [mobile.md](mobile.md).
 
 ## 6. Add the script tag
 

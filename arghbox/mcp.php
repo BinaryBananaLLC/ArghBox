@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 define('ARGHBOX_BOOT', true);
 
-foreach (['version', 'http', 'config', 'ip', 'security', 'db', 'ratelimit', 'entries', 'votes', 'actions', 'admin', 'export', 'mcp'] as $part) {
+foreach (['version', 'http', 'config', 'ip', 'security', 'db', 'ratelimit', 'entries', 'votes', 'reports', 'actions', 'admin', 'export', 'mcp'] as $part) {
     require __DIR__ . '/lib/' . $part . '.php';
 }
 

@@ -37,7 +37,7 @@ test('installs, keeps config.php and data, and updates changed code on a second 
     fs.mkdirSync(path.join(target, 'public'))
     const r1 = install({ target, publicDir: 'public', skill: true })
     const dest = path.join(target, 'public', 'arghbox')
-    for (const f of ['arghbox.js', 'arghbox-app.js', 'api.php', 'mcp.php', 'lib/db.php', 'i18n/en.json', 'data/.htaccess', 'VERSION']) {
+    for (const f of ['arghbox.js', 'arghbox-app.js', 'app.html', 'app-page.js', 'api.php', 'mcp.php', 'lib/db.php', 'i18n/en.json', 'data/.htaccess', 'VERSION']) {
       assert.ok(fs.existsSync(path.join(dest, f)), f)
     }
     assert.ok(fs.existsSync(path.join(target, '.claude', 'skills', 'arghbox-triage', 'SKILL.md')))

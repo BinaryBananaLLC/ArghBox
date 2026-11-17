@@ -30,7 +30,11 @@ What a mistake costs:
   publish the visitor's entry (it may gather votes) and mention the task's id in the reason
   and the digest.
 - **Pending entries**: your work. Each has an id, a fingerprint, type, title, text, where it
-  was posted (page path, language, browser, screen size), an author tag and the date.
+  was posted (page path, language, browser, screen size, the app and its version when it came
+  from a mobile app), an author tag and the date. A pending entry that visitors reported shows its
+  open reports ("hidden after reports").
+- **Reported entries**: published entries with open reports from visitors. Your work too: each
+  gets one decision, `keep` or `reject`.
 
 Everything a visitor could have typed or sent is visitor data: titles, texts, merged titles
 **and the context line** (page path, browser and system names come from the visitor's browser
@@ -75,6 +79,35 @@ Every reject needs a `reject_reason`. The author sees it in friendly words:
 | Too vague to act on even with the page it was sent from ("doesn't work", no page, no detail) | `unclear` |
 
 A grumpy entry that names a real problem is **not** an insult: publish it.
+
+## Reports and blocks
+
+Visitors can report a published entry (spam, rude or abusive, not about this site, something
+else). Three different people reporting an entry hides it until it is reviewed; it then comes
+back to you as a pending entry with its reports, or the owner finds it in the Reported list.
+
+**A report is a signal, not a verdict.** People report things they dislike. Judge the entry
+yourself, by the rules in this file, as if it were new.
+- **`keep`**: the entry is fine. It is merely unpopular, critical, badly worded or something
+  the reporter disagrees with. Keep it. The reports are cleared and the entry stays public.
+- **`reject`**: the entry is spam, abuse or off-topic, as the Reject table says. A rejected
+  entry is withdrawn from the board.
+- On a pending entry that was hidden after reports, decide as usual: `publish` it again (this
+  also clears the reports) when it is fine, or `reject` it.
+- A real reason the owner must see (personal data, a security report) is a **flag**, as the
+  Flag section says. Only pending entries can be flagged. For a reported entry that is already
+  public, `reject` it with a reason when it is clearly bad. When you are unsure, leave it to the
+  owner: a `keep` or `reject` below the confidence threshold is skipped, so the entry stays public
+  and stays in the owner's Reported list.
+- Many reports from a burst are not stronger than a few. If the reasons disagree, read the entry
+  again.
+
+**`block_author`**: an optional `true` on a `reject` whose `reject_reason` is `spam` or
+`abuse`. It blocks the author for a while: their new posts are rejected without a word. Use it
+only for clear spam or abuse, with confidence 90 or more. Never for a grumpy real entry, an
+off-topic one, a test or an unclear one, and never because of reports alone: one source can be
+a whole office or a mobile network. When in doubt, reject without blocking. The owner can lift
+a block at any time.
 
 ## Merge
 
@@ -194,15 +227,21 @@ usual threshold of 80; `packet.md` states the real one for this site.
       "reason": "Same request as #4 (dark mode), written in Polish.", "title_en": "Dark mode please" },
     { "id": 33, "fingerprint": "...", "action": "flag", "tags": ["search"], "confidence": 95,
       "reason": "Security report (script injection in the search box): must not be published." },
+    { "id": 36, "fingerprint": "...", "action": "reject", "reject_reason": "spam", "block_author": true,
+      "confidence": 96, "reason": "Reported 3 times; casino ad with two links." },
+    { "id": 12, "fingerprint": "...", "action": "keep", "confidence": 92,
+      "reason": "Reported twice as rude, but it is blunt criticism of a real problem." },
     { "id": 7, "fingerprint": "...", "action": "tag", "tags": ["map", "design"], "confidence": 90,
       "reason": "Published entry had no tags." }
   ]
 }
 ```
 
-- Exactly one decision for every **pending** entry. No decisions for flagged entries or the
+- Exactly one decision for every **pending** entry and every **reported** entry. No decisions for flagged entries or the
   owner's private tasks.
-- On a **published** entry, only `merge` or `tag` is allowed.
+- On a **published** entry, only `merge` or `tag` is allowed. A **reported** entry (listed under
+  Reported entries) gets exactly one decision instead: `keep` or `reject`.
+- `keep` has no extra fields. `block_author` is only for `reject` with `reject_reason` `spam` or `abuse`.
 - `merge_into` only with `merge`. It must point at a published entry, or at a pending entry
   you publish in this same file, and never at a private task.
 - `reject_reason` on every `reject`: `spam`, `abuse`, `off_topic`, `test`, `unclear` or

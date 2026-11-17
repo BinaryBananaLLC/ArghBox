@@ -2,7 +2,7 @@
 declare(strict_types=1);
 defined('ARGHBOX_BOOT') || exit;
 
-const AB_SCHEMA_VERSION = 3;
+const AB_SCHEMA_VERSION = 4;
 const AB_JOURNAL_DEFAULT = 'delete';
 
 function ab_db(): PDO
@@ -203,6 +203,37 @@ function ab_migrate(PDO $db): void
         if (ab_schema_version($db) < 3) {
             $db->exec('CREATE INDEX IF NOT EXISTS idx_limits_window ON limits(window_start)');
             $db->exec('CREATE INDEX IF NOT EXISTS idx_entries_receipt ON entries(receipt_hash)');
+        }
+        if (ab_schema_version($db) < 4) {
+            // Reports, blocks and the author's voter hash (SPEC section 6b). Older entries keep author_voter ''.
+            $cols = array_column(ab_all($db, 'PRAGMA table_info(entries)'), 'name');
+            if (!in_array('author_voter', $cols, true)) {
+                $db->exec("ALTER TABLE entries ADD COLUMN author_voter TEXT NOT NULL DEFAULT ''");
+            }
+            $db->exec("CREATE TABLE IF NOT EXISTS reports (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              entry_id INTEGER NOT NULL REFERENCES entries(id),
+              reason TEXT NOT NULL,
+              voter_hash TEXT NOT NULL,
+              ip_hash TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              cleared_at TEXT NULL,
+              cleared_by INTEGER NULL,
+              UNIQUE(entry_id, voter_hash)
+            )");
+            $db->exec("CREATE TABLE IF NOT EXISTS blocks (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              entry_id INTEGER NOT NULL,
+              author_hash TEXT NOT NULL,
+              voter_hash TEXT NOT NULL,
+              note TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              lifted_at TEXT NULL
+            )");
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_reports_entry ON reports(entry_id)');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_blocks_author ON blocks(author_hash)');
+            $db->exec('CREATE INDEX IF NOT EXISTS idx_blocks_voter ON blocks(voter_hash)');
         }
         $st = $db->prepare("INSERT INTO meta(key, value) VALUES('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value");
         $st->execute([(string)AB_SCHEMA_VERSION]);

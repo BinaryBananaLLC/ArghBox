@@ -103,6 +103,12 @@
     '@media(max-width:639px){.chips{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:4px;margin-right:-20px;padding-right:20px}.chip{flex:none;min-height:44px}.ov{background:var(--bg)}.panel{inset:0!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
     '.hd{padding-top:calc(10px + env(safe-area-inset-top))}' +
     '@media(prefers-reduced-motion:no-preference){.panel,[data-pos=left] .panel{animation-name:up}@keyframes up{from{transform:translateY(24px)}}}}' +
+    '.cr a{display:inline-block;padding:8px 6px}' +
+    '.rpt{margin:6px 0 10px}.rp{min-height:44px;padding:0 4px;color:var(--mut);text-decoration:underline}' +
+    '.rs{flex-direction:column;min-width:0}.rs .ty{flex:none}legend{padding:0;margin:0 0 6px;font-weight:600}' +
+    '.pg .ov{background:var(--bg)}.pg .panel{inset:0!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
+    '.pg .hd,.pg .sc,.pg .ft{--pl:max(20px,env(safe-area-inset-left),calc((100% - 640px)/2));--pr:max(20px,env(safe-area-inset-right),calc((100% - 640px)/2));padding-left:var(--pl);padding-right:var(--pr)}' +
+    '.pg .hd{padding-top:calc(10px + env(safe-area-inset-top));padding-right:calc(var(--pr) - 12px)}.pg .hd.bk{padding-left:calc(var(--pl) - 12px)}' +
     '@media print{.ov{display:none}}';
 
   var ICONS = {
@@ -294,6 +300,23 @@
     }
     return p;
   }
+  function appCtx(a) {
+    var o = {};
+    a = a || {};
+    if (/^(ios|android|other)$/.test(a.platform)) o.platform = a.platform;
+    if (typeof a.version === 'string' && /^[0-9A-Za-z._+-]{1,20}$/.test(a.version)) o.version = a.version;
+    return o;
+  }
+  function contactUrl(u) { return typeof u === 'string' && /^(https?:\/\/|mailto:)[^\s<>"]+$/i.test(u) ? u : ''; }
+  function dropHidden(entries, counts, ids) {
+    var gone = {};
+    var keep = ids.length ? entries.filter(function (e) {
+      if (ids.indexOf(e.id) < 0) return true;
+      (e.tags || []).forEach(function (g) { gone[g] = (gone[g] || 0) + 1; });
+      return false;
+    }) : entries;
+    return { entries: keep, counts: counts.map(function (c) { return { tag: c.tag, count: c.count - (gone[c.tag] || 0) }; }).filter(function (c) { return c.count > 0; }) };
+  }
   function clip(s, n) {
     s = String(s || '').replace(/\s+/g, ' ').trim();
     return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '\u2026' : s;
@@ -312,7 +335,7 @@
     fold: fold, tokens: tokens, rank: rank, similar: similar, sortEntries: sortEntries, splitEntries: splitEntries,
     tabEntries: tabEntries, pluralCat: pluralCat, lookup: lookup, format: format, translate: translate, parseUA: parseUA,
     fromBrands: fromBrands, screenClass: screenClass, buildContext: buildContext, errorInfo: errorInfo, fmtDate: fmtDate,
-    fetchBody: fetchBody, clip: clip, pagePath: pagePath, countLinks: countLinks, ratio: ratio, linkify: linkify, newVoterKey: newVoterKey, toMs: toMs, isClosed: isClosed
+    fetchBody: fetchBody, clip: clip, pagePath: pagePath, countLinks: countLinks, ratio: ratio, appCtx: appCtx, contactUrl: contactUrl, dropHidden: dropHidden, linkify: linkify, newVoterKey: newVoterKey, toMs: toMs, isClosed: isClosed
   };
 
 
@@ -434,6 +457,8 @@
   function mount(shadow, cfg) {
     if (mounted && mounted.shadow === shadow) return mounted;
     var wrap = cfg.wrap || shadow;
+    var A = (window.ArghBoxConfig || {}).app, pg = !!A && typeof A === 'object';
+    if (pg && wrap.classList) wrap.classList.add('pg');
     addSheet(shadow, CSS, cfg.nonce);
     applyTheme(wrap, cfg.theme);
 
@@ -481,6 +506,13 @@
       store('arghbox:receipts', JSON.stringify(S.receipts));
     }
 
+    // not the loader's `arghbox:hidden` (the tab's dismissal time)
+    function hiddenIds() {
+      var a;
+      try { a = JSON.parse(store('arghbox:reported') || '[]'); } catch (e) { }
+      return Array.isArray(a) ? a.filter(function (n) { return n > 0; }).slice(-200) : [];
+    }
+
     function call(action, o) {
       o = o || {};
       var headers = {};
@@ -520,8 +552,11 @@
     function loadList() {
       if (!listP) {
         listP = call('list', { voter: true }).then(function (r) {
-          setEntries(r.entries || []);
-          S.tagCounts = r.tag_counts || [];
+          var vis = dropHidden(r.entries || [], r.tag_counts || [], hiddenIds());
+          setEntries(vis.entries);
+          S.tagCounts = vis.counts;
+          S.contact = contactUrl(r.contact);
+          S.appPass = pg && r.app_pass === true;
           S.voted = {};
           (r.voted || []).forEach(function (id) { S.voted[id] = 1; });
           S.site = r.site || {};
@@ -532,7 +567,7 @@
           S.credit = r.credit !== false;
           S.listState = 'ok';
           S.listAt = Date.now();
-          if (S.key && S.isOpen) tsLoad().catch(function () { });
+          if (S.key && !S.appPass && S.isOpen) tsLoad().catch(function () { });
           return loadMine();
         }).catch(function (e) {
           S.listState = S.entries.length ? 'ok' : 'error';
@@ -572,7 +607,7 @@
     function tsShow(on) {
       if (!tsBox) return;
       if (on && !S.isOpen) on = false; // a late challenge must never pop up over the host page after the dialog closed
-      var small = window.innerWidth < 640, side = cfg.position === 'left' ? 'left' : 'right';
+      var small = pg || window.innerWidth < 640, side = cfg.position === 'left' ? 'left' : 'right';
       tsBox.style.display = on ? 'block' : 'none';
       if (on) {
         tsBox.style.left = tsBox.style.right = 'auto';
@@ -629,9 +664,9 @@
     function ensurePass() {
       if (S.pass && S.passExp - 30000 > Date.now()) return Promise.resolve(S.pass);
       if (S.passP) return S.passP;
-      if (!S.key) return Promise.reject({ code: S.listState === 'ok' ? 'turnstile_not_configured' : 'network' });
-      S.passP = tsToken().then(function (tok) {
-        return call('session', { body: { turnstile: tok } });
+      if (!S.key && !S.appPass) return Promise.reject({ code: S.listState === 'ok' ? 'turnstile_not_configured' : 'network' });
+      S.passP = (S.appPass ? Promise.resolve() : tsToken()).then(function (tok) {
+        return call('session', { body: S.appPass ? { app: true } : { turnstile: tok } });
       }).then(function (r) {
         S.pass = r.pass;
         S.passExp = r.expires_in > 0 ? Date.now() + r.expires_in * 1000 : toMs(r.expires_at);
@@ -683,9 +718,11 @@
       ]);
     }
     function credit() {
-      return S.credit && cfg.credit !== false
-        ? h('div', { class: 'cr' }, [h('a', { href: 'https://github.com/BinaryBananaLLC/ArghBox', target: '_blank', rel: 'noopener', text: t('credit') })])
-        : null;
+      var a = [];
+      if (S.contact) a.push(h('a', { href: S.contact, target: '_blank', rel: 'noopener', text: t('contact') }));
+      if (S.credit && cfg.credit !== false) a.push(h('a', { href: 'https://github.com/BinaryBananaLLC/ArghBox', target: '_blank', rel: 'noopener', text: t('credit') }));
+      if (a.length > 1) a.splice(1, 0, ' \u00b7 ');
+      return a.length ? h('div', { class: 'cr' }, a) : null;
     }
     function badge(cls, text) { return h('span', { class: 'bd ' + cls, text: text }); }
     function badges(e) {
@@ -914,6 +951,7 @@
       R.q = q;
       R.box = h('div', { id: 'ab-panel', role: 'tabpanel' });
       R.sc = h('div', { class: 'sc' }, [
+        S.note ? h('p', { class: 'sim', text: S.note }) : null,
         R.wel,
         R.mine,
         h('div', { class: 'row' }, [tabsEl, h('div', { class: 'srt', role: 'group', 'aria-label': t('sort.label') }, R.sortBtns)]),
@@ -951,12 +989,64 @@
         e.body ? h('p', { class: 'body', dir: 'auto', text: e.body }) : null,
         (e.tags || []).length ? h('div', { class: 'meta' }, e.tags.map(function (g) { return h('span', { class: 'tg', text: '#' + g }); })) : null,
         h('div', { class: 'vbig' }, [voteBtn(e), h('span', { text: t('votes', { n: e.votes }) })]),
+        e.source === 'visitor' ? reportBox(e) : null,
         (e.aliases || []).length ? h('div', null, [h('h3', { text: t('detail.also') }), h('ul', { class: 'al' }, e.aliases.map(function (a) { return h('li', { dir: 'auto', text: a }); }))]) : null,
         (e.comments || []).length ? h('div', null, [h('h3', { text: t('detail.comments', { site: siteName() }) })].concat(e.comments.map(function (c) {
           return h('div', { class: 'cm' }, [h('time', { datetime: c.at, text: fmtDate(c.at, cfg.lang) }), h('p', { dir: 'auto' }, rich(c.body))]);
         }))) : null
       ]);
       return { hd: header(e.title, '', back), vw: h('div', { class: 'vw' }, [sc, h('div', { class: 'ft' }, [credit()])]) };
+    }
+
+    function reportBox(e) {
+      var box = h('div', { class: 'rpt' });
+      function button() {
+        box.textContent = '';
+        box.appendChild(h('button', { type: 'button', class: 'rp', text: t('report.button'), onclick: form }));
+      }
+      function form() {
+        var sel = '', send, radios;
+        banner('');
+        radios = ['spam', 'abusive', 'off_topic', 'other'].map(function (k) {
+          var i = h('input', { type: 'radio', name: 'ab-reason', value: k, onchange: function () { sel = k; banner(''); } });
+          return h('label', { class: 'ty' }, [i, h('span', { text: t('report.' + k) })]);
+        });
+        send = h('button', { type: 'button', class: 'pri', text: t('report.send'), onclick: function () {
+          if (!sel) { banner(t('report.pick')); radios[0].firstChild.focus(); return; }
+          banner('');
+          send.disabled = true;
+          send.textContent = t('add.sending');
+          withPass(function (pass) {
+            return call('report', { body: { pass: pass, voter: voter(), id: e.id, reason: sel } });
+          }).then(function () {
+            var ids = hiddenIds();
+            ids.push(e.id);
+            store('arghbox:reported', JSON.stringify(ids.slice(-200)));
+            var vis = dropHidden(S.entries, S.tagCounts, [e.id]);
+            setEntries(vis.entries);
+            S.tagCounts = vis.counts;
+            if (!S.isOpen) return;
+            S.note = t('report.done');
+            setView('list');
+            say(S.note);
+          }).catch(function (err) {
+            send.disabled = false;
+            send.textContent = t('report.send');
+            fail(err);
+          });
+        } });
+        box.textContent = '';
+        box.appendChild(h('fieldset', { class: 'types rs' }, [h('legend', { text: t('report.legend') })].concat(radios)));
+        box.appendChild(h('div', { class: 'row' }, [send, h('button', { type: 'button', class: 'sec', text: t('report.cancel'), onclick: function () {
+          banner('');
+          button();
+          box.firstChild.focus();
+        } })]));
+        radios[0].firstChild.focus();
+        send.scrollIntoView({ block: 'nearest' }); // the Send button must not sit under the sticky footer
+      }
+      button();
+      return box;
     }
 
     function currentContext() {
@@ -967,6 +1057,8 @@
         width: window.innerWidth
       });
       if (!page) delete ctx.page; // nothing to record: the key is not sent at all
+      var ap = pg ? appCtx(A) : {};
+      if (Object.keys(ap).length) ctx.app = ap;
       return ctx;
     }
     function viewAdd() {
@@ -1095,6 +1187,7 @@
 
     function setView(v) {
       S.view = v;
+      if (v !== 'list') S.note = '';
       clearTimeout(S.qt); // a pending search paint must not redraw (and unfocus) the view we are switching to
       if (!S.panel) return;
       var parts = v === 'add' ? viewAdd() : v === 'detail' ? viewDetail() : v === 'thanks' ? viewThanks() : viewList();
@@ -1119,7 +1212,7 @@
       if (v === 'add') prewarm();
     }
     function prewarm() {
-      if (S.key) ensurePass().catch(function (e) { if (e && e.code === 'turnstile_unavailable') fail(e); });
+      if (S.key || S.appPass) ensurePass().catch(function (e) { if (e && e.code === 'turnstile_unavailable') fail(e); });
     }
     function tryWant() {
       var id = S.want;
@@ -1137,7 +1230,10 @@
         paintList();
         tryWant();
       } else if (S.view === 'add' || S.view === 'detail') paintVotes();
-      if (!(S.credit && cfg.credit !== false)) Array.prototype.forEach.call(S.panel.querySelectorAll('.cr'), function (n) { n.parentNode.removeChild(n); });
+      Array.prototype.forEach.call(S.panel.querySelectorAll('.cr'), function (n) {
+        var c = credit();
+        if (c) n.parentNode.replaceChild(c, n); else n.parentNode.removeChild(n);
+      });
     }
 
     function fallbackView() {
@@ -1210,7 +1306,7 @@
       S.panel.focus({ preventScroll: true });
       emitType('arghbox:open', o.type);
       if (!S.listAt || Date.now() - S.listAt > 60000) loadList();
-      if (S.key) tsLoad().catch(function () { });
+      if (S.key && !S.appPass) tsLoad().catch(function () { });
       loadStrings().then(function (ok) {
         if (!S.isOpen) return;
         if (ok) go(o); else fallbackView();

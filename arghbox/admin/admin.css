@@ -328,3 +328,11 @@ button.tile:hover { border-color: var(--accent); }
 [hidden] { display: none !important; }
 .confirm { margin: 8px 0 0; padding: 10px 12px; border: 1px solid var(--bad); border-radius: 8px; background: var(--bad-bg); color: var(--ink); }
 .confirm p { margin: 0 0 8px; }
+
+/* Reports and author blocks */
+.reports { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--bad); border-radius: 8px; background: var(--bad-bg); color: var(--ink); }
+.reports p { margin: 0 0 6px; }
+.reports .row { margin-top: 8px; }
+.reports-hidden { font-weight: 600; }
+.author-block { margin: 10px 0; }
+.author-block .confirm input { width: 100%; max-width: 100%; box-sizing: border-box; margin-bottom: 8px; }

@@ -381,7 +381,7 @@ describe('5. limits table, global caps, token shape', () => {
       assert.equal(r.status, 0, r.stderr);
       assert.match(r.stdout, /idx_limits_window/);
       assert.match(r.stdout, /idx_entries_receipt/);
-      assert.match(r.stdout, /v=3/);
+      assert.match(r.stdout, /v=4/);
     } finally {
       await box.stop();
     }

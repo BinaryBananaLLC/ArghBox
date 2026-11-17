@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feedback</title>
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1b1f}
+@media(prefers-color-scheme:dark){:root{--bg:#1d1c22;--fg:#f1eff5}}
+:root[data-theme=light]{color-scheme:light;--bg:#fff;--fg:#1c1b1f}
+:root[data-theme=dark]{color-scheme:dark;--bg:#1d1c22;--fg:#f1eff5}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+[hidden]{display:none!important}
+main{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:100vh;padding:24px;text-align:center}
+h1{margin:0;font-size:20px}
+button{min-height:48px;padding:0 24px;border:0;border-radius:12px;background:#c0432f;background:color-mix(in srgb,var(--ac,#e8553d) 78%,#000);color:#fff;font:600 16px system-ui,sans-serif}
+button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+</style>
+</head>
+<body>
+<noscript><p style="padding:24px">This page needs JavaScript. Please turn it on and reload.</p></noscript>
+<main id="c" hidden>
+<h1>Feedback closed</h1>
+<button type="button" id="o">Open again</button>
+</main>
+<script src="app-page.js?v=0.1.0"></script>
+</body>
+</html>

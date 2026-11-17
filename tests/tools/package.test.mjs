@@ -39,10 +39,17 @@ test('the version is the same in package.json, arghbox/VERSION, lib/version.php 
   assert.match(fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8'), new RegExp(`^## \\[${v.replace(/\./g, '\\.')}\\]`, 'm'))
 })
 
-test('package.json is publishable: public, with provenance, a bin and typed exports', () => {
+test('the version in the widget files and in app.html is the package version', () => {
+  const v = PKG.version
+  const read = (f) => fs.readFileSync(path.join(REPO, 'arghbox', f), 'utf8')
+  for (const f of ['arghbox.js', 'arghbox-app.js', 'app-page.js']) assert.ok(read(f).startsWith(`/*! ArghBox ${v} `), `${f} header`)
+  assert.ok(read('app.html').includes(`<script src="app-page.js?v=${v}"></script>`), 'app.html loads app-page.js?v=<version>')
+})
+
+test('package.json is publishable: public (no provenance, so a local npm publish works), a bin and typed exports', () => {
   assert.equal(PKG.name, 'arghbox')
   assert.equal(PKG.private, undefined, 'a private package cannot be published')
-  assert.deepEqual(PKG.publishConfig, { access: 'public', provenance: true })
+  assert.deepEqual(PKG.publishConfig, { access: 'public' })
   assert.equal(PKG.bin.arghbox, 'bin/arghbox.mjs')
   assert.match(fs.readFileSync(path.join(REPO, PKG.bin.arghbox), 'utf8'), /^#!\/usr\/bin\/env node/)
   assert.equal(PKG.exports['.'].default, './index.mjs')
@@ -61,7 +68,7 @@ test('the packed file list has the server folder, the skill and the CLI, and not
     for (const f of junk) assert.ok(!files.includes(f), `${f} must never be packed`)
     for (const f of ['bin/arghbox.mjs', 'index.mjs', 'index.d.ts', 'tools/install.mjs', 'tools/new-secrets.mjs', 'README.md', 'LICENSE', 'CHANGELOG.md',
       'arghbox/.htaccess', 'arghbox/lib/.htaccess', 'arghbox/data/.htaccess', 'arghbox/data/index.html', 'arghbox/VERSION', 'arghbox/arghbox.js',
-      'arghbox/arghbox-app.js', 'arghbox/api.php', 'arghbox/mcp.php', 'arghbox/lib/config.php', 'arghbox/config.example.php', 'arghbox/i18n/en.json',
+      'arghbox/arghbox-app.js', 'arghbox/app.html', 'arghbox/app-page.js', 'arghbox/api.php', 'arghbox/mcp.php', 'arghbox/lib/config.php', 'arghbox/config.example.php', 'arghbox/i18n/en.json',
       'skill/arghbox-triage/SKILL.md', 'skill/arghbox-triage/triage.mjs']) {
       assert.ok(files.includes(f), `${f} must be packed`)
     }
@@ -140,4 +147,11 @@ test('arghbox help, version and unknown commands', () => {
   const missing = run('install', '--public')
   assert.equal(missing.status, 2)
   assert.match(missing.stderr, /--public needs a value/)
+})
+
+test('.htaccess: app-page.js is cached like the other scripts; app.html and the admin assets revalidate with no-transform', () => {
+  const ht = fs.readFileSync(path.join(REPO, 'arghbox', '.htaccess'), 'utf8')
+  assert.match(ht, /\^\(arghbox\|arghbox-app\|app-page\)\\.js\$/)
+  assert.match(ht, /<FilesMatch "\^\(app\\.html\|admin\\.\(css\|js\)\)\$">\s*Header set Cache-Control "no-cache, no-transform"/)
+  assert.match(ht, /<FilesMatch "\^app\\\.html\$">\s*Header set X-Frame-Options "DENY"\s*Header set Content-Security-Policy "frame-ancestors 'none'"/)
 })

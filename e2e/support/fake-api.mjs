@@ -5,7 +5,7 @@
  *   const api = createFakeApi({ moderation: 'pending' })   // api.handler(req, res) is a node:http handler
  *   const { url, close } = await startFakeApi(api)          // or listen on a random port (CORS enabled)
  *
- * Implements list, session, add, vote, mine, health. Voter keys are real: `voted` in `list` follows
+ * Implements list, session, add, vote, report, mine, health. Voter keys are real: `voted` in `list` follows
  * the X-ArghBox-Voter header. A pass is any string returned by `session`.
  *
  * Inspecting what the widget sent:
@@ -18,6 +18,9 @@
  *   api.set({ moderation: 'publish' }) new entries are published at once
  *   api.set({ turnstileKey: '' })      list returns no site key
  *   api.set({ welcome: 'Hello' })      the owner's welcome text in list
+ *   api.set({ contact: 'https://example.com/contact' })  list.contact (the owner's contact link)
+ *   api.set({ appPass: true })         list.app_pass: session {app: true} gives a pass without Turnstile
+ *   api.reports                        [{id, reason, voter}] what `report` stored (one per voter and entry)
  *   api.set({ minFillMs: 2500 })       like the real server: faster adds get a silent fake success
  *   api.failNext('vote', 'rate_limited', { retry_after: 120, times: 1, status: 429, field })
  *                                      next N calls of an action fail with that error (action '*' = any)
@@ -54,7 +57,7 @@ export function seedEntries() {
   ]
 }
 
-const DEFAULTS = () => ({ down: false, slowMs: 0, moderation: 'pending', turnstileKey: '1x00000000000000000000AA', minFillMs: 0, credit: true, welcome: '' })
+const DEFAULTS = () => ({ down: false, slowMs: 0, moderation: 'pending', turnstileKey: '1x00000000000000000000AA', minFillMs: 0, credit: true, welcome: '', contact: '', appPass: false })
 
 export function createFakeApi(options = {}) {
   const api = {
@@ -62,6 +65,7 @@ export function createFakeApi(options = {}) {
     entries: [],
     voters: new Map(), // entry id -> Set of voter keys (on top of the seed vote count)
     passes: new Set(),
+    reports: [],
     log: [],
     failures: [],
     expireOnce: false,
@@ -74,6 +78,7 @@ export function createFakeApi(options = {}) {
     api.entries = seedEntries()
     api.voters = new Map()
     api.passes = new Set()
+    api.reports = []
     api.log = []
     api.failures = []
     api.expireOnce = false
@@ -144,7 +149,7 @@ export function createFakeApi(options = {}) {
     const f = api.failures.find((x) => (x.action === action || x.action === '*') && x.times > 0)
     if (f) { f.times--; return error(res, f.code, f.o) }
 
-    if (action === 'add' || action === 'vote') {
+    if (action === 'add' || action === 'vote' || action === 'report') {
       if (api.expireOnce) { api.expireOnce = false; api.passes.clear(); return error(res, 'pass_expired') }
       if (!api.passes.has(body.pass)) return error(res, 'pass_invalid')
     }
@@ -159,11 +164,13 @@ export function createFakeApi(options = {}) {
         const voted = api.entries.filter((x) => api.voters.get(x.id)?.has(voter)).map((x) => x.id)
         return send(res, 200, {
           ok: true, site: { name: 'Demo Site' }, welcome: api.sw.welcome, version: '0.1.0', turnstile_site_key: api.sw.turnstileKey, moderation: api.sw.moderation,
-          credit: api.sw.credit, entries: listed, tag_counts, voted,
+          credit: api.sw.credit, contact: api.sw.contact, app_pass: api.sw.appPass, entries: listed, tag_counts, voted,
         })
       }
       case 'session': {
-        if (typeof body.turnstile !== 'string' || !body.turnstile.startsWith('stub-token')) return error(res, 'turnstile_failed')
+        if (body.app === true && typeof body.turnstile !== 'string') {
+          if (!api.sw.appPass) return error(res, 'turnstile_failed')
+        } else if (typeof body.turnstile !== 'string' || !body.turnstile.startsWith('stub-token')) return error(res, 'turnstile_failed')
         const pass = 'pass-' + api.nextPass++
         api.passes.add(pass)
         return send(res, 200, { ok: true, pass, expires_at: Math.floor(Date.now() / 1000) + 1800 })
@@ -195,6 +202,13 @@ export function createFakeApi(options = {}) {
         if (body.on) set.add(voter); else set.delete(voter)
         api.voters.set(en.id, set)
         return send(res, 200, { ok: true, id: en.id, votes: votesOf(en), voted: set.has(voter) })
+      }
+      case 'report': {
+        if (!['spam', 'abusive', 'off_topic', 'other'].includes(body.reason)) return error(res, 'invalid_input', { field: 'reason' })
+        const en = api.entry(body.id)
+        if (!en || en.state !== 'published' || en.source !== 'visitor') return error(res, 'not_found')
+        if (!api.reports.some((r) => r.id === en.id && r.voter === voter)) api.reports.push({ id: en.id, reason: body.reason, voter })
+        return send(res, 200, { ok: true, id: en.id })
       }
       case 'mine': {
         const rs = Array.isArray(body.receipts) ? body.receipts.slice(0, 50) : []

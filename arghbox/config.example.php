@@ -79,6 +79,21 @@ return [
     // when it cannot be enabled.
     'journal_mode' => 'delete',
 
+    // A "Contact" link in the dialog footer: an https://, http:// or mailto: address, at most 300 characters, with no
+    // spaces. Anything else is ignored. App stores want apps that show user posts to publish contact details.
+    // Example: 'mailto:feedback@example.com'
+    'contact_url' => '',
+
+    // Visitors can report a published entry. When this many DIFFERENT people (distinct network addresses) have an open
+    // report on it, it is hidden (back to pending) until you or the triage AI review it. 0 = never hide automatically.
+    // Whatever the number, reported entries show up in the admin page's Reported list. 0 to 100.
+    'report_hide_at' => 3,
+
+    // Opt-in, WEAKER protection for mobile apps whose WebView cannot run Cloudflare Turnstile: the app page asks for a
+    // pass without the human check. Anyone can ask for it, so it proves neither a human nor a genuine app. New entries
+    // still wait for review, but votes are then limited only by the per-IP caps. Leave false unless you ship the box in an app.
+    'app_pass' => false,
+
     // Optional preset tags offered first to the triage AI and to you, e.g. ['map', 'export', 'mobile'].
     'tags' => [],
 
@@ -97,5 +112,7 @@ return [
         'sessions_global_per_hour' => 2000,       // Turnstile checks per hour for the whole site
         'auth_failures_global_per_hour' => 500,   // wrong tokens per hour for the whole site
         'mine_per_hour' => 120,                   // "your arghs" lookups per visitor per hour
+        'reports_per_hour' => 10,                 // reports per network address per hour
+        'block_days' => 90,                       // how long a blocked author stays blocked
     ],
 ];

@@ -1,26 +1,31 @@
 name: Release
 
-# Publishes one version everywhere: a GitHub Release with the upload zip, the skill zip and the npm tarball
-# (each with a signed build provenance attestation), then the `arghbox` package on npmjs.com with npm
-# provenance, so `npm install arghbox` is traceable to this repository and this workflow run.
-# Never runs per commit.
+# Publishes one version, ONLY when the owner asks for it: a GitHub Release with the upload zip, the skill zip
+# and the npm tarball (each with a build provenance attestation), then the `arghbox` package on npmjs.com with
+# npm provenance.
+#
+# NO TEST AUTOMATION (owner decision 2026-11-17): this is the only workflow in the repository, it never runs on
+# push or pull request, and it runs no tests. Never add CI, test steps or scheduled workflows.
 #
 # HOW TO RELEASE
 #   1. Set the new version in package.json, arghbox/VERSION and arghbox/lib/version.php, give it a dated
-#      "## [x.y.z] - YYYY-MM-DD" section in CHANGELOG.md, and merge to main. `npm test` checks they agree.
+#      "## [x.y.z] - YYYY-MM-DD" section in CHANGELOG.md, and push to main.
 #   2. Actions -> Release -> Run workflow -> tag "vx.y.z" -> Run. The tag is created at the selected branch's
 #      HEAD. Pushing a vx.y.z tag from a terminal works too.
 #   A version with a hyphen (v0.2.0-rc.1) becomes a GitHub pre-release and goes to npm under the "next"
 #   dist-tag, so `npm install arghbox` keeps giving the last stable version.
 #
 # ONE-TIME SETUP
-#   - The repository must be public: npm refuses provenance from private repositories.
 #   - npm auth, either way:
 #       a. a repository secret NPM_TOKEN: a granular access token from npmjs.com with read and write on
 #          packages (for the first publish, scope it to all packages; later, to arghbox only), or
 #       b. trusted publishing: on npmjs.com, arghbox -> Settings -> Trusted publisher -> GitHub Actions,
 #          organization BinaryBananaLLC, repository ArghBox, workflow release.yml. No secret needed; npm can
 #          only set this up once the package exists, so the first publish uses (a). Then delete NPM_TOKEN.
+#
+# MONEY GUARD: the first job runs only while the repository is public, where GitHub-hosted runners are free
+# (a private repository bills the account's monthly minutes, and npm refuses provenance from it anyway).
+# Every other job needs the first one, so nothing runs in a private repository. Never remove the `if:` line.
 #
 # Never create releases on the Releases page: this workflow creates the release as a draft, attaches every
 # file and only then publishes it, which also works when the repository uses immutable releases.
@@ -43,9 +48,10 @@ concurrency:
 
 jobs:
   check:
-    name: Check the version and run the tests
+    name: Check the tag against package.json and npm
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     outputs:
       tag: ${{ steps.v.outputs.tag }}
       version: ${{ steps.v.outputs.version }}
@@ -77,7 +83,7 @@ jobs:
           fi
           PKG="$(node -p "require('./package.json').version")"
           if [ "$PKG" != "$VERSION" ]; then
-            echo "::error::package.json at ${SHA:0:7} says $PKG, the tag says $VERSION. Bump the version (package.json, arghbox/VERSION, arghbox/lib/version.php, CHANGELOG.md) and merge first."; exit 1
+            echo "::error::package.json at ${SHA:0:7} says $PKG, the tag says $VERSION. Bump the version (package.json, arghbox/VERSION, arghbox/lib/version.php, CHANGELOG.md) and push first."; exit 1
           fi
           if npm view "arghbox@$VERSION" version >/dev/null 2>&1; then
             echo "::error::arghbox@$VERSION is already on npm. npm never reuses a version: release the next one."; exit 1
@@ -88,17 +94,6 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then PRE=true; else PRE=false; fi
           echo "Releasing $TAG from ${SHA:0:7} (pre-release: $PRE)"
           { echo "tag=$TAG"; echo "version=$VERSION"; echo "prerelease=$PRE"; echo "sha=$SHA"; } >> "$GITHUB_OUTPUT"
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.4'
-          extensions: pdo_sqlite, mbstring, curl, openssl
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run check:size
 
   build:
     name: Build the release files
@@ -212,17 +207,3 @@ jobs:
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "No NPM_TOKEN secret: publishing through npm trusted publishing (see the setup notes at the top of this file)."; fi
           TAGFLAG=""; if [ "$PRE" = "true" ]; then TAGFLAG="--tag next"; fi
           npm publish --provenance --access public --ignore-scripts $TAGFLAG
-      - name: Check that the published package installs and runs
-        shell: bash
-        env:
-          VERSION: ${{ needs.check.outputs.version }}
-        run: |
-          set -euo pipefail
-          cd "$(mktemp -d)"
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if out="$(npx --yes "arghbox@$VERSION" --version 2>/dev/null)" && [ "$out" = "$VERSION" ]; then
-              echo "npx arghbox@$VERSION --version -> $out"; exit 0
-            fi
-            sleep 10
-          done
-          echo "::error::arghbox@$VERSION did not become installable from npm within 2 minutes."; exit 1

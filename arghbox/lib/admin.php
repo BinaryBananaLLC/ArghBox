@@ -82,6 +82,9 @@ function ab_tag_vocabulary(PDO $db, array $cfg): array
     return $out;
 }
 
+/** SQL condition: SPEC 6b "reported" = an open report and a live (published, pending, flagged) state. */
+const AB_SQL_REPORTED = "state IN ('published', 'pending', 'flagged') AND EXISTS (SELECT 1 FROM reports rp WHERE rp.entry_id = entries.id AND rp.cleared_at IS NULL)";
+
 function ab_svc_queue(): array
 {
     $cfg = ab_config();
@@ -108,6 +111,11 @@ function ab_svc_queue(): array
     foreach (ab_all($db, "SELECT * FROM entries WHERE state = 'private' ORDER BY id DESC") as $r) {
         $private[] = ['id' => (int)$r['id'], 'type' => $r['type'], 'title' => $r['title'], 'status' => $r['status'], 'tags' => ab_tags_of($r['tags'])];
     }
+    $reported = [];
+    foreach (ab_all($db, "SELECT e.* FROM entries e JOIN (SELECT entry_id, MIN(created_at) AS m FROM reports WHERE cleared_at IS NULL GROUP BY entry_id) r ON r.entry_id = e.id
+        WHERE e.state = 'published' AND e.source = 'visitor' ORDER BY r.m ASC, e.id ASC") as $r) {
+        $reported[] = ab_admin_entry($r, $ctx);
+    }
     return [
         'site' => ['name' => $cfg['site_name'], 'url' => $cfg['site_url'], 'about' => $cfg['about']],
         'moderation' => $cfg['moderation'],
@@ -117,6 +125,7 @@ function ab_svc_queue(): array
         'flagged' => $flagged,
         'published' => $published,
         'private' => $private,
+        'reported' => $reported,
     ];
 }
 
@@ -155,7 +164,7 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
         $now = ab_iso();
         $db->prepare('INSERT INTO runs(at, reviewer, counts, digest) VALUES(?, ?, ?, ?)')->execute([$now, $reviewer, '{}', $digest]);
         $runId = (int)$db->lastInsertId();
-        $counts = ['publish' => 0, 'reject' => 0, 'merge' => 0, 'flag' => 0, 'tag' => 0, 'skipped' => 0];
+        $counts = ['publish' => 0, 'reject' => 0, 'merge' => 0, 'flag' => 0, 'tag' => 0, 'keep' => 0, 'block' => 0, 'skipped' => 0];
         $applied = [];
         $skipped = [];
         $skip = static function ($id, string $reason) use (&$skipped, &$counts): void {
@@ -179,7 +188,7 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
             }
             $id = $d['id'];
             $action = $d['action'] ?? null;
-            if (!is_string($action) || !in_array($action, ['publish', 'reject', 'merge', 'flag', 'tag'], true)) {
+            if (!is_string($action) || !in_array($action, ['publish', 'reject', 'merge', 'flag', 'tag', 'keep'], true)) {
                 $skip($id, 'invalid_input');
                 continue;
             }
@@ -194,8 +203,9 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
                 continue;
             }
             $state = $row['state'];
-            $okState = ($state === 'pending' && $action !== 'tag')
-                || ($state === 'published' && ($action === 'merge' || $action === 'tag'));
+            $reported = $state === 'published' && $row['source'] === 'visitor' && ab_open_report_ids($db, $id) !== [];
+            $okState = ($state === 'pending' && $action !== 'tag' && $action !== 'keep')
+                || ($state === 'published' && ($action === 'merge' || $action === 'tag' || (($action === 'keep' || $action === 'reject') && $reported)));
             if (!$okState) {
                 $skip($id, 'invalid_state');
                 continue;
@@ -238,6 +248,11 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
                     continue;
                 }
             }
+            $blockAuthor = $d['block_author'] ?? false;
+            if (!is_bool($blockAuthor) || ($blockAuthor && !($action === 'reject' && in_array($rejectReason, ['spam', 'abuse'], true)))) {
+                $skip($id, 'invalid_input');
+                continue;
+            }
             $reason = is_string($d['reason'] ?? null) ? ab_truncate($d['reason'], 500) : '';
             $titleEn = is_string($d['title_en'] ?? null) ? ab_truncate($d['title_en'], 200) : null;
 
@@ -270,7 +285,10 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
                 $ai['reject_reason'] = $rejectReason;
             }
             $changes = ['ai' => ab_jenc($ai)];
-            if ($eff === 'merge') {
+            $blocked = false;
+            if ($eff === 'keep') {
+                ab_dismiss_reports($db, $row, $actor, $runId, $ai);
+            } elseif ($eff === 'merge') {
                 ab_merge($db, $row, $mergeTarget, $actor, $runId, $changes);
             } else {
                 if (!$flaggedInstead && $state === 'pending') {
@@ -292,10 +310,18 @@ function ab_svc_apply(array $in, string $actor, string $reviewer): array
                 } elseif ($eff === 'flag') {
                     $changes['state'] = 'flagged';
                 }
-                ab_change($db, $row, $changes, $eff, $actor, $runId);
+                [$row] = ab_change($db, $row, $changes, $eff, $actor, $runId);
+                if ($eff === 'reject' && $blockAuthor && ab_block_author($db, $row, $actor, $runId, '', false) !== null) {
+                    $counts['block']++;
+                    $blocked = true;
+                }
             }
             $counts[$eff]++;
-            $applied[] = ['id' => $id, 'action' => $eff, 'flagged_instead' => $flaggedInstead];
+            $out = ['id' => $id, 'action' => $eff, 'flagged_instead' => $flaggedInstead];
+            if ($blockAuthor) {
+                $out['blocked'] = $blocked;
+            }
+            $applied[] = $out;
         }
         $db->prepare('UPDATE runs SET counts = ? WHERE id = ?')->execute([ab_jenc($counts), $runId]);
         return ['run_id' => $runId, 'applied' => $applied, 'skipped' => $skipped];
@@ -706,6 +732,15 @@ function ab_svc_entries(array $q): array
         $where[] = 'tags LIKE ?';
         $params[] = '%"' . $tag . '"%';
     }
+    $rep = ab_qstr($q, 'reported');
+    if ($rep === '1' || $rep === 'true') {
+        $where[] = AB_SQL_REPORTED;
+    }
+    $blk = ab_qstr($q, 'blocked');
+    if ($blk === '1' || $blk === 'true') {
+        $where[] = "source = 'visitor' AND EXISTS (SELECT 1 FROM blocks b WHERE b.lifted_at IS NULL AND b.expires_at > ? AND ((b.author_hash <> '' AND b.author_hash = entries.author_hash) OR (b.voter_hash <> '' AND b.voter_hash = entries.author_voter)))";
+        $params[] = ab_iso();
+    }
     $text = trim(ab_qstr($q, 'q'));
     if ($text !== '') {
         $like = ab_like($text);
@@ -833,10 +868,12 @@ function ab_svc_stats(): array
     foreach (ab_all($db, 'SELECT state, COUNT(*) AS n FROM entries GROUP BY state') as $r) {
         $counts[$r['state']] = (int)$r['n'];
     }
+    $counts['reported'] = (int)ab_scalar($db, 'SELECT COUNT(*) FROM entries WHERE ' . AB_SQL_REPORTED);
     $last = ab_one($db, 'SELECT * FROM runs ORDER BY id DESC LIMIT 1');
     return [
         'counts' => $counts,
         'votes' => (int)ab_scalar($db, 'SELECT COUNT(*) FROM votes'),
+        'blocks' => count(ab_active_blocks($db)),
         'entries_last_7_days' => (int)ab_scalar($db, 'SELECT COUNT(*) FROM entries WHERE source = ? AND created_at >= ?', ['visitor', ab_iso(ab_now() - 7 * 86400)]),
         'last_run' => $last === null ? null : ab_run_out($last),
     ];

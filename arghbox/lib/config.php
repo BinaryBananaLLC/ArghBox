@@ -29,6 +29,9 @@ function ab_config_defaults(): array
         'journal_mode' => 'delete',
         'trusted_proxies' => [],
         'turnstile_hostnames' => [],
+        'contact_url' => '',
+        'report_hide_at' => 3,
+        'app_pass' => false,
         'limits' => [
             'entries_per_hour' => 5,
             'votes_per_hour' => 60,
@@ -43,6 +46,8 @@ function ab_config_defaults(): array
             'sessions_global_per_hour' => 2000,
             'auth_failures_global_per_hour' => 500,
             'mine_per_hour' => 120,
+            'reports_per_hour' => 10,
+            'block_days' => 90,
         ],
     ];
 }
@@ -50,6 +55,22 @@ function ab_config_defaults(): array
 function ab_document_root(): string
 {
     return (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
+}
+
+/** A contact link for the dialog footer: https://, http:// or mailto:, at most 300 chars, no whitespace or control characters. Else ''. */
+function ab_clean_contact_url($v): string
+{
+    if (!is_string($v) || $v === '' || strlen($v) > 300 || preg_match('/[\s\p{Cc}\p{Cf}]/u', $v) !== 0) {
+        return '';
+    }
+    if (preg_match('~^mailto:[^:]~i', $v) === 1) {
+        return $v;
+    }
+    if (preg_match('~^https?://~i', $v) === 1) {
+        $p = parse_url($v);
+        return is_array($p) && !empty($p['host']) ? $v : '';
+    }
+    return '';
 }
 
 /** Locate config.php. Returns [path, location] or null. */
@@ -125,6 +146,10 @@ function ab_config_load(): ?array
             is_array($cfg[$k]) ? $cfg[$k] : []
         ), static fn($o) => $o !== ''));
     }
+    $cfg['contact_url'] = ab_clean_contact_url($cfg['contact_url']);
+    $cfg['report_hide_at'] = is_numeric($cfg['report_hide_at']) ? max(0, min(100, (int)$cfg['report_hide_at'])) : 3;
+    $cfg['app_pass'] = $cfg['app_pass'] === true;
+    $cfg['limits']['block_days'] = max(1, (int)$cfg['limits']['block_days']);
     $cfg['welcome'] = ab_truncate(trim(is_string($cfg['welcome']) ? $cfg['welcome'] : ''), 500);
     $cfg['read_token_sha256'] = strtolower((string)$cfg['read_token_sha256']);
     $cfg['auto_apply_min_confidence'] = (int)$cfg['auto_apply_min_confidence'];

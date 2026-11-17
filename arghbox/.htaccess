@@ -28,8 +28,18 @@ Options -Indexes
 
 # Static assets: one hour. Host pages bust the cache with ?v=<version>.
 <IfModule mod_headers.c>
-  <FilesMatch "^(arghbox|arghbox-app)\.js$">
+  <FilesMatch "^(arghbox|arghbox-app|app-page)\.js$">
     Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+  # The mobile app page changes with each release: always revalidate. no-transform keeps Cloudflare from injecting
+  # scripts (its analytics beacon) that the page's CSP would block. Same for the admin assets, which have no ?v=.
+  <FilesMatch "^(app\.html|admin\.(css|js))$">
+    Header set Cache-Control "no-cache, no-transform"
+  </FilesMatch>
+  # The app page must not be framed (a meta CSP cannot set frame-ancestors).
+  <FilesMatch "^app\.html$">
+    Header set X-Frame-Options "DENY"
+    Header set Content-Security-Policy "frame-ancestors 'none'"
   </FilesMatch>
   <FilesMatch "\.json$">
     Header set Cache-Control "public, max-age=3600"

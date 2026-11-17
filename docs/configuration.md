@@ -31,6 +31,9 @@ A PHP file that returns an array. `arghbox/config.example.php` documents every k
 | `triage_public_writes` | `false` | Let the triage token (the AI, over REST or MCP) put new text on the public board: public comments, public tasks, publishing entries and rewriting published titles or texts. Off, it can still triage (publish or reject pending entries through `apply`, status, tags, merges, links) and write private notes. Old name `mcp_allow_public_comments` is still accepted. |
 | `turnstile_hostnames` | `[]` | Hostnames a Turnstile token may be issued for, besides the host of `site_url`. Tokens also must carry the action `arghbox` when Cloudflare reports one. The check is skipped with Cloudflare's test keys. |
 | `journal_mode` | `'delete'` | SQLite journal mode. `'delete'` works everywhere. `'wal'` lets readers and the writer overlap and creates `-wal` and `-shm` files next to the database (already blocked by the deny rules); do not use it on network filesystems. WAL falls back to `delete` when it cannot be enabled. |
+| `contact_url` | `''` | A link shown as "Contact" in the dialog footer: `https://`, `http://` or `mailto:`, at most 300 characters. Anything else counts as empty. App stores want contact details for apps with user posts, see [mobile.md](mobile.md). |
+| `report_hide_at` | `3` | A published visitor entry that this many different people (different IP hashes) have reported is hidden until you review it (it waits as pending; "Put it back" on the admin page publishes it again and dismisses the reports). `0` never hides automatically. A whole number from 0 to 100. |
+| `app_pass` | `false` | For mobile apps whose WebView cannot pass Turnstile: hand out a pass without the human check. A weaker protection, so it is off by default. Read [mobile.md](mobile.md#the-app_pass-fallback) first. |
 | `limits` | see below | Rate limits and form checks. |
 
 ### `limits`
@@ -52,12 +55,18 @@ Missing keys fall back to these defaults, so you only list what you change.
 | `sessions_global_per_hour` | 2000 | Turnstile checks per hour for the whole site, whatever the number of visitors. |
 | `auth_failures_global_per_hour` | 500 | Wrong tokens per hour for the whole site (REST and MCP). |
 | `mine_per_hour` | 120 | "Your arghs" lookups per visitor per hour. |
+| `reports_per_hour` | 10 | Reports per visitor (per IP hash) per hour. |
+| `block_days` | 90 | How long "Block author" lasts. You can lift a block at any time. |
 
 ### Where things are found
 
 `config.php`, first match wins: the `ARGHBOX_CONFIG` environment variable, then `arghbox-private/config.php` above the web root, then `arghbox/config.php`.
 
 The database (`arghbox.sqlite`), first usable wins: `data_dir` from the config (if writable and outside the web root), the `ARGHBOX_DATA_DIR` environment variable, `arghbox-private/` above the web root, then `arghbox/data/` (protected by `.htaccess`, reported as a warning by the health check).
+
+## Mobile apps
+
+Apps show the board in a WebView with `arghbox/app.html`. It takes URL parameters (`platform`, `version`, `from`, `view`, `type`, `theme`, `accent`, `lang`, `tone`) instead of script tag attributes. See [mobile.md](mobile.md).
 
 ## Script tag attributes
 

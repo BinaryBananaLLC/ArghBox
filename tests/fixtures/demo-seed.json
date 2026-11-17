@@ -19,7 +19,8 @@
   {
     "type": "idea", "title": "Sync accepted ideas with GitHub issues",
     "body": "When an idea is planned, open an issue in my repo and close it when the idea is marked done.",
-    "state": "published", "status": "open", "tags": ["integrations"], "votes": 23, "days_ago": 14
+    "state": "published", "status": "open", "tags": ["integrations"], "votes": 23, "days_ago": 14,
+    "reports": [{ "reason": "off_topic", "author": "demo-reporter-1" }, { "reason": "other", "author": "demo-reporter-2" }]
   },
   {
     "type": "bug", "title": "The tab overlaps my chat bubble on mobile",

@@ -4,7 +4,7 @@ import { nextIp, startArghBox } from '../helpers/server.mjs';
 
 const VER = '2026-07-28';
 const READ_TOOLS = ['arghbox_stats', 'arghbox_list_pending', 'arghbox_list_entries', 'arghbox_search', 'arghbox_get_entry', 'arghbox_list_tags', 'arghbox_get_log'];
-const WRITE_TOOLS = ['arghbox_apply_decisions', 'arghbox_set_status', 'arghbox_comment', 'arghbox_tag', 'arghbox_link_issue', 'arghbox_merge', 'arghbox_reject', 'arghbox_create_task', 'arghbox_undo'];
+const WRITE_TOOLS = ['arghbox_apply_decisions', 'arghbox_set_status', 'arghbox_comment', 'arghbox_tag', 'arghbox_link_issue', 'arghbox_merge', 'arghbox_reject', 'arghbox_create_task', 'arghbox_undo', 'arghbox_dismiss_reports', 'arghbox_block_author', 'arghbox_unblock_author'];
 
 let seq = 0;
 /** A modern-era request: _meta in params plus the matching headers. */
@@ -92,7 +92,7 @@ describe('transport: both eras', () => {
   test('legacy tools/list and tools/call work without _meta', async () => {
     const l = legacy('tools/list');
     const list = await box.mcp(l.body, { headers: { 'MCP-Protocol-Version': '2025-11-25' } });
-    assert.equal(list.json.result.tools.length, 16);
+    assert.equal(list.json.result.tools.length, 19);
     const c = legacy('tools/call', { name: 'arghbox_stats', arguments: {} });
     const r = await box.mcp(c.body);
     assert.equal(r.json.result.isError, undefined);
@@ -202,7 +202,7 @@ describe('authentication and scope', () => {
     assert.equal(good.status, 200, 'a valid token still works');
   });
 
-  test('triage token sees 16 tools with schemas and annotations; read token sees the 7 read tools', async () => {
+  test('triage token sees 19 tools with schemas and annotations; read token sees the 7 read tools', async () => {
     const m = modern('tools/list');
     const all = (await box.mcp(m.body, { headers: m.headers })).json.result;
     assert.equal(all.resultType, 'complete');
@@ -217,7 +217,7 @@ describe('authentication and scope', () => {
       assert.equal(t.annotations.openWorldHint, false);
       assert.equal(t.annotations.readOnlyHint, READ_TOOLS.includes(t.name), t.name);
     }
-    for (const n of ['arghbox_merge', 'arghbox_reject', 'arghbox_undo']) assert.equal(all.tools.find((t) => t.name === n).annotations.destructiveHint, true, n);
+    for (const n of ['arghbox_merge', 'arghbox_reject', 'arghbox_undo', 'arghbox_block_author']) assert.equal(all.tools.find((t) => t.name === n).annotations.destructiveHint, true, n);
     assert.equal(all.tools.find((t) => t.name === 'arghbox_comment').annotations.destructiveHint, false);
     assert.deepEqual(all.tools.find((t) => t.name === 'arghbox_comment').inputSchema.required.sort(), ['body', 'id', 'public']);
     assert.ok(!all.tools.some((t) => /delete|remove/.test(t.name)), 'no delete tool');

@@ -49,7 +49,7 @@ All tool names start with `arghbox_`.
 | Tool | Access | Arguments | What it does |
 |---|---|---|---|
 | `arghbox_stats` | read | none | Counts, votes, entries in the last 7 days, the last run |
-| `arghbox_list_pending` | read | `limit`, `offset` | Pending and flagged entries (bodies cut short; `limit`, `offset`) |
+| `arghbox_list_pending` | read | `limit`, `offset` | Pending, flagged and reported entries, with their reports (bodies cut short; `limit`, `offset`) |
 | `arghbox_list_entries` | read | `state`, `status`, `type`, `source`, `tag`, `q`, `sort`, `limit`, `offset` | Filter by state, status, type, source, tag or text; sort; up to 50 rows |
 | `arghbox_search` | read | `q` (required), `state`, `limit` | Full-text search with a snippet per hit |
 | `arghbox_get_entry` | read | `id` | One entry with comments, AI note and recent actions |
@@ -64,6 +64,9 @@ All tool names start with `arghbox_`.
 | `arghbox_reject` | write, destructive hint | `id`, `reject_reason`, optional `note` | Reject an entry with a reason |
 | `arghbox_create_task` | write | `type`, `title`, optional `body`, `status`, `tags`, `public` | Create one of your own tasks (private by default) |
 | `arghbox_undo` | write, destructive hint | `action_id` or `run_id` | Undo one action or a whole run |
+| `arghbox_dismiss_reports` | write | `id` | Keep a reported entry: clear its open reports |
+| `arghbox_block_author` | write, destructive hint | `id`, optional `note` | Block the author of a visitor entry (their new posts are rejected quietly, for `block_days` days) |
+| `arghbox_unblock_author` | write | `id` | Lift the blocks that match that entry's author |
 
 Every tool takes a JSON object of arguments; the server's `tools/list` answer carries the exact schema for each one, so your AI client always knows them.
 
@@ -78,6 +81,8 @@ curl -s https://example.com/arghbox/mcp.php \
 ```
 
 The other methods are `initialize` and `tools/list`. A wrong token answers 401, the owner token answers 401 on purpose, and a write tool with the read token answers a tool error ("This token is read-only").
+
+`context.app` (the app platform and version) is visitor text like the rest of an entry's context, and is marked as untrusted too.
 
 ## Safety
 

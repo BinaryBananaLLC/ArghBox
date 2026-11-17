@@ -8,7 +8,6 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-e8553d.svg)](LICENSE)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777bb4.svg)](docs/install.md)
 [![No build step](https://img.shields.io/badge/build%20step-none-2ea44f.svg)](#why-arghbox)
-[![CI](https://github.com/BinaryBananaLLC/ArghBox/actions/workflows/ci.yml/badge.svg)](https://github.com/BinaryBananaLLC/ArghBox/actions/workflows/ci.yml)
 [![Made for Claude Code](https://img.shields.io/badge/made%20for-Claude%20Code-d97757.svg)](docs/triage.md)
 [![Donate](https://img.shields.io/badge/Donate-%E2%99%A5-ea4aaa.svg)](https://arghbox.com/donate/)
 
@@ -47,17 +46,20 @@ ArghBox™ is an open-source feedback widget for small websites. Visitors click 
 - A public list of ideas and bugs with votes, search, tag filters, statuses and the owner's replies
 - Adding an idea first shows similar entries ("Is it one of these? Vote instead"), so duplicates are rare
 - "Your arghs": visitors see what happened to their own entries, even why one was not published
+- A **Report** button on every entry: three reports from different people hide it until you review it
 - Keyboard friendly, screen-reader friendly, funny or neutral wording, translatable
 
 **For owners**
 - An admin page for statuses, public comments and private notes
 - Private to-do items that never show up on the public list
+- A **Reported** list with "Keep it" or "Put it back", a blocked-authors list and **Block author**, so you can show the box inside an app store app
 - Every change is logged and can be undone, one action or a whole triage run
 - An Atom feed of the backlog and changelog
 
 **AI triage**
 - A Claude Code skill empties the box: it rejects spam, merges duplicates (with their votes), tags and flags
 - The AI suggests, you decide: low-confidence verdicts wait for you
+- Reported entries get a keep or reject decision too, and the AI may block a clear spam author
 - Visitor text is treated as untrusted data, so prompt-injection attempts are rejected
 
 **MCP**
@@ -139,6 +141,10 @@ Everything is logged on the admin page, and `triage.mjs undo --run <id>` takes a
     <td width="50%"><img src="docs/images/admin-entry.png" alt="An admin entry with the AI note: suggestion, confidence, reason and translation"></td>
   </tr>
 </table>
+
+## Mobile apps
+
+Your iOS, Android, React Native or Flutter app can show the whole board in a WebView with no sign-in: open `https://example.com/arghbox/app.html?platform=ios&version=2.3.1`. The page tells your app when the visitor closes it, and the new Report and Block author features, plus a `contact_url`, cover what the App Store and Google Play ask of apps with user posts. Copy-paste code for Swift, Kotlin, React Native and Flutter is in **[docs/mobile.md](docs/mobile.md)**.
 
 ## MCP
 

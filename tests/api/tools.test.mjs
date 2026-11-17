@@ -88,6 +88,13 @@ describe('tools/seed.mjs and the demo seed file', () => {
       assert.equal(stats.counts.merged, 2);
       const q = await get('admin.queue', true);
       assert.equal(q.private.length, 1);
+      assert.equal(q.reported.length, 1, 'the demo seed has one entry with open reports');
+      assert.equal(q.reported[0].title, 'Sync accepted ideas with GitHub issues');
+      assert.equal(q.reported[0].reports.open, 2);
+      assert.deepEqual(q.reported[0].reports.reasons, { spam: 0, abusive: 0, off_topic: 1, other: 1 });
+      assert.equal(q.reported[0].state, 'published');
+      assert.equal(stats.counts.reported, 1);
+      assert.equal(stats.blocks, 0);
     } finally {
       await php.stop();
       await fake.stop();
