@@ -24,7 +24,13 @@ test('admin page: security headers, noindex, no inline script or style, relative
     assert.doesNotMatch(html, /<style|\sstyle=|\son\w+=/i);
     assert.match(html, /src="admin\.js"/);
     assert.match(html, /href="admin\.css"/);
-    for (const f of ['admin.js', 'admin.css', 'logo.svg']) assert.equal((await fetch(`${box.url}admin/${f}`)).status, 200);
+    for (const f of ['admin.js', 'admin.css', 'logo.svg']) {
+      const r = await fetch(`${box.url}admin/${f}`);
+      assert.equal(r.status, 200);
+      // Read the body: on Windows, Node 22's fetch crashes (undici "assert(!this.paused)") when the
+      // PHP server is stopped while a response body is still unread.
+      await r.arrayBuffer();
+    }
     assert.equal(fs.readFileSync(path.join(ARGHBOX_DIR, 'admin', 'logo.svg'), 'utf8').includes('ArghBox'), true);
     assert.doesNotMatch(fs.readFileSync(path.join(ARGHBOX_DIR, 'admin', 'admin.js'), 'utf8'), /innerHTML|insertAdjacentHTML|document\.write/);
   } finally {
