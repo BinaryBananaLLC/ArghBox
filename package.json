@@ -71,7 +71,8 @@
     "check:size": "node tools/check-size.mjs",
     "pack": "node tools/pack.mjs",
     "capture": "node tools/capture.mjs",
-    "install-into": "node tools/install.mjs"
+    "install-into": "node tools/install.mjs",
+    "set-version": "node tools/set-version.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

@@ -7,13 +7,19 @@ name: Release
 # NO TEST AUTOMATION (owner decision 2026-11-17): this is the only workflow in the repository, it never runs on
 # push or pull request, and it runs no tests. Never add CI, test steps or scheduled workflows.
 #
-# HOW TO RELEASE
-#   1. Set the new version in package.json, arghbox/VERSION and arghbox/lib/version.php, give it a dated
-#      "## [x.y.z] - YYYY-MM-DD" section in CHANGELOG.md, and push to main.
-#   2. Actions -> Release -> Run workflow -> tag "vx.y.z" -> Run. The tag is created at the selected branch's
-#      HEAD. Pushing a vx.y.z tag from a terminal works too.
+# HOW TO RELEASE (all in the browser)
+#   Actions -> Release -> Run workflow -> type the new tag, e.g. v0.1.1 -> Run.
+#   Nobody edits a version by hand. The tag is created at the selected branch's HEAD, and every job writes
+#   its version into the files it uses (tools/set-version.mjs: package.json, the lockfile, arghbox/VERSION,
+#   lib/version.php, the widget files, the docs and the tests), and turns CHANGELOG.md's "## [Unreleased]"
+#   into the dated "## [x.y.z]" section, which becomes the release notes. After a successful release, the
+#   last job commits the same change back to the branch ("Release vx.y.z: ... [skip ci]"), so pull before
+#   your next change. Write the notes as you go, under "## [Unreleased]" in CHANGELOG.md.
+#   If a run fails part-way, open it and use "Re-run failed jobs" rather than starting a new run.
+#   Pushing a vx.y.z tag from a terminal works too.
 #   A version with a hyphen (v0.2.0-rc.1) becomes a GitHub pre-release and goes to npm under the "next"
-#   dist-tag, so `npm install arghbox` keeps giving the last stable version.
+#   dist-tag, so `npm install arghbox` keeps giving the last stable version. Pre-releases are not committed
+#   back to the branch.
 #
 # ONE-TIME SETUP
 #   - npm auth, either way:
@@ -35,7 +41,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to release, e.g. v0.1.0 (created at the selected branch's HEAD if it does not exist)
+        description: Tag to release, e.g. v0.2.0 (created at the selected branch's HEAD if it does not exist; the version is written into every file for you)
         required: true
 
 permissions:
@@ -81,9 +87,11 @@ jobs:
           else
             SHA="$GITHUB_SHA"
           fi
+          # The files may still say the previous version: each job writes this one into them (set-version).
+          # A tag older than the files would be a downgrade, though.
           PKG="$(node -p "require('./package.json').version")"
-          if [ "$PKG" != "$VERSION" ]; then
-            echo "::error::package.json at ${SHA:0:7} says $PKG, the tag says $VERSION. Bump the version (package.json, arghbox/VERSION, arghbox/lib/version.php, CHANGELOG.md) and push first."; exit 1
+          if [ "$(node --input-type=module -e "import { compareVersions } from './tools/set-version.mjs'; console.log(compareVersions('$VERSION', '$PKG') < 0)")" = "true" ]; then
+            echo "::error::The tag says $VERSION, but package.json at ${SHA:0:7} already says $PKG. Release a newer version."; exit 1
           fi
           if npm view "arghbox@$VERSION" version >/dev/null 2>&1; then
             echo "::error::arghbox@$VERSION is already on npm. npm never reuses a version: release the next one."; exit 1
@@ -111,6 +119,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Write the version into every file
+        run: node tools/set-version.mjs "${{ needs.check.outputs.version }}"
       - name: Build the zips and the npm tarball
         shell: bash
         run: |
@@ -144,6 +154,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.check.outputs.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Write the version into every file (CHANGELOG.md gets its dated section for the notes)
+        run: node tools/set-version.mjs "${{ needs.check.outputs.version }}"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-files
@@ -197,6 +212,8 @@ jobs:
           registry-url: https://registry.npmjs.org
       # Trusted publishing (OIDC, no token) needs npm 11.5.1 or newer.
       - run: npm install --global npm@11
+      - name: Write the version into every file
+        run: node tools/set-version.mjs "${{ needs.check.outputs.version }}"
       - name: Publish
         shell: bash
         env:
@@ -207,3 +224,42 @@ jobs:
           if [ -z "$NODE_AUTH_TOKEN" ]; then echo "No NPM_TOKEN secret: publishing through npm trusted publishing (see the setup notes at the top of this file)."; fi
           TAGFLAG=""; if [ "$PRE" = "true" ]; then TAGFLAG="--tag next"; fi
           npm publish --provenance --access public --ignore-scripts $TAGFLAG
+
+  sync-version:
+    name: Commit the version back to the branch
+    # The jobs above write the version into the files inside their runners only. This writes the same change
+    # to the branch the release came from (the default branch for a pushed tag), so the repository, the
+    # release and npm agree and the next run starts from this version. It runs only after npm published, and
+    # never for pre-releases. GITHUB_TOKEN pushes start no workflows, and the commit says [skip ci] as well.
+    # main is not protected today. If it ever is, this push needs a ruleset bypass actor (for example a token
+    # minted for a GitHub App on the bypass list); only this job would fail, because the release is out by then.
+    needs: [check, npm]
+    if: ${{ needs.check.outputs.prerelease == 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # push the version commit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.repository.default_branch }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Write the version and commit it if anything changed
+        shell: bash
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          # --if-newer: never move the branch back if it already says this version or a later one.
+          node tools/set-version.mjs "$VERSION" --if-newer
+          if git diff --quiet; then echo "The branch already says $VERSION: nothing to commit."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Release $TAG: set the version everywhere [skip ci]"
+          git pull -q --rebase
+          git push -q
+          echo "Committed $VERSION to $(git rev-parse --abbrev-ref HEAD) as $(git rev-parse --short HEAD)."

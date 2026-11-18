@@ -22,7 +22,7 @@ Problems in your hosting, in Cloudflare, or in Claude Code itself are out of sco
 
 ## Supported versions
 
-ArghBox has no releases yet. Only the latest code on the `main` branch is supported. After 0.1.0 is released, the latest release will be.
+Only the latest release is supported. Security fixes ship as a new release, so upgrade with `npm install --save-dev arghbox@latest` or the newest zip from the [releases](https://github.com/BinaryBananaLLC/ArghBox/releases).
 
 ## Good practice for site owners
 

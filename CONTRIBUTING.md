@@ -68,10 +68,11 @@ Copy `arghbox/i18n/en.json` to `arghbox/i18n/<code>.json`, translate the values,
 
 Releases come only from the **Release** workflow (`.github/workflows/release.yml`), never from a laptop or the Releases page. It is the repository's only workflow: there is no CI, and the release does not run the tests, so run them on your computer first.
 
-1. Set the new version in `package.json`, `arghbox/VERSION` and `arghbox/lib/version.php`, and give it a dated `## [x.y.z] - YYYY-MM-DD` section in `CHANGELOG.md`. `npm test` fails until all four agree.
-2. Run `npm run test:all`, push to `main`, then run **Actions, Release, Run workflow** with the tag `vx.y.z`.
+1. Write the release notes as you go, under `## [Unreleased]` in `CHANGELOG.md`.
+2. Run `npm run test:all` and push to `main`.
+3. Run **Actions, Release, Run workflow**, type the tag (for example `v0.2.0`) and run it.
 
-The workflow builds the zips and the npm tarball with provenance attestations, publishes the GitHub Release, and publishes `arghbox` to npm with provenance. A version with a hyphen (`0.2.0-rc.1`) becomes a pre-release and goes to npm under the `next` tag. The one-time npm setup is described at the top of `.github/workflows/release.yml`.
+Nobody edits a version by hand. The workflow writes the version from the tag into every file that carries it with `tools/set-version.mjs` (`package.json`, the lockfile, `arghbox/VERSION`, `lib/version.php`, the widget files, the docs and the tests), and turns `## [Unreleased]` into the dated `## [x.y.z]` section, which becomes the release notes. It builds the zips and the npm tarball with provenance attestations, publishes the GitHub Release, and publishes `arghbox` to npm with provenance. Then it commits the version change back to `main` ("Release vx.y.z: set the version everywhere"), so pull before your next change. To try a version locally without releasing, run `npm run set-version -- 0.2.0` and throw the change away afterwards. A version with a hyphen (`0.2.0-rc.1`) becomes a pre-release and goes to npm under the `next` tag. The one-time npm setup is described at the top of `.github/workflows/release.yml`.
 
 ## Security
 
