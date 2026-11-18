@@ -1,4 +1,4 @@
-/*! ArghBox 0.1.0 | mobile app page | MIT | https://github.com/BinaryBananaLLC/ArghBox */
+/*! ArghBox 0.1.1 | mobile app page | MIT | https://github.com/BinaryBananaLLC/ArghBox */
 (function (w, d) {
   'use strict';
   var q = new URLSearchParams(w.location.search), me = d.currentScript, root = d.documentElement;

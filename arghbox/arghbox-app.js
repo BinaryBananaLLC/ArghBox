@@ -1,8 +1,8 @@
-/*! ArghBox 0.1.0 | app: the dialog | MIT | https://github.com/BinaryBananaLLC/ArghBox */
+/*! ArghBox 0.1.1 | app: the dialog | MIT | https://github.com/BinaryBananaLLC/ArghBox */
 (function (window, document) {
   'use strict';
 
-  var VERSION = '0.1.0';
+  var VERSION = '0.1.1';
   var FONT = 'var(--arghbox-font,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif)';
 
   // ArghBox palette (art/README.md); hosts override it with --arghbox-* properties (docs/configuration.md)

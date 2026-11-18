@@ -2,7 +2,7 @@
 
 This is the contract every part of ArghBox is built against: the upload folder, the PHP API,
 the widget, the admin page, the triage skill and the tests. When code and this file disagree,
-fix one of them in the same change. Version 0.1.0.
+fix one of them in the same change. Version 0.1.1.
 
 ## 1. Constraints (apply to every file)
 
@@ -50,7 +50,7 @@ arghbox/                  the folder site owners upload, served at /arghbox/
   data/.htaccess          fallback data folder (deny all) + index.html (empty)
   config.example.php
   .htaccess               see section 4
-  VERSION                 "0.1.0"
+  VERSION                 "0.1.1"
 skill/arghbox-triage/     copied into a site repo as .claude/skills/arghbox-triage/
   SKILL.md  PROMPT.md  RULES.md  triage.mjs
 .claude/skills/arghbox-triage/SKILL.md   thin wrapper so the ArghBox repo can triage its own boards
@@ -66,7 +66,7 @@ e2e/                      Playwright specs (*.spec.mjs) for widget, admin and de
 docs/                     SPEC.md (this file) and user docs
 ```
 
-Version string `0.1.0` appears in `arghbox/VERSION`, `ArghBox.version` in both JS files,
+Version string `0.1.1` appears in `arghbox/VERSION`, `ArghBox.version` in both JS files,
 `ARGHBOX_VERSION` in `lib/version.php` and `package.json`. A unit test keeps them equal.
 
 ## 3. Configuration (`config.php`)
@@ -666,7 +666,7 @@ so the token is never pasted into a config file.
 
 ### Script tag
 ```html
-<script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+<script src="/arghbox/arghbox.js?v=0.1.1" defer></script>
 ```
 Attributes (all optional):
 
@@ -691,7 +691,7 @@ Attributes (all optional):
 ### JavaScript API and events
 ```js
 window.ArghBox = {
-  version: '0.1.0',
+  version: '0.1.1',
   open(options),   // options: {type: 'idea'|'bug'|'question', view: 'list'|'add'}; loads the app if needed
   close(),
   showTab(),       // also clears a × dismissal

@@ -244,7 +244,7 @@ export async function run({ langs, dryRun = false, all = false, paid = false }, 
   dryRun = dryRun || !paid;
   const i18n = path.join(root, 'arghbox', 'i18n');
   const en = JSON.parse(fs.readFileSync(path.join(i18n, 'en.json'), 'utf8'));
-  const version = en._meta?.version || '0.1.0';
+  const version = en._meta?.version || '0.1.1';
   const statePath = path.join(i18n, '.translate-state.json');
   let state = {};
   try {

@@ -96,7 +96,7 @@ You need PHP 8.1+ with SQLite on the web host. On your own computer you need [No
 5. **Add one line to your pages:**
 
    ```html
-   <script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+   <script src="/arghbox/arghbox.js?v=0.1.1" defer></script>
    ```
 
 The full walkthrough, with hosting specifics, Cloudflare notes and troubleshooting, is in **[docs/install.md](docs/install.md)**.

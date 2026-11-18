@@ -128,7 +128,7 @@ test('no network request before interaction; hovering the tab prefetches only th
   await expect.poll(() => urls.filter((u) => /arghbox-app\.js/.test(u)).length).toBeGreaterThan(0)
   expect(urls.filter((u) => /api\.php|i18n|challenges\.cloudflare/.test(u))).toEqual([])
   // the script URL carries the ?v= of the loader
-  expect(urls.find((u) => /arghbox-app\.js/.test(u))).toContain('?v=0.1.0')
+  expect(urls.find((u) => /arghbox-app\.js/.test(u))).toContain('?v=0.1.1')
 })
 
 test('opens by click, by ArghBox.open(), by #arghbox links (hash removed), by type and view options', async ({ page, servers }) => {
@@ -813,7 +813,7 @@ test('local preview: on a local host with no box, sample entries, a note and wor
   await expect(wel.getByRole('link')).toHaveAttribute('href', 'https://github.com/BinaryBananaLLC/ArghBox/blob/main/docs/install.md#test-on-your-computer')
   await expect(card(page, 'Export my results as CSV')).toBeVisible()
   await expect(panel(page).locator('.empty')).toHaveCount(0) // no error message
-  expect(urls.filter((u) => /arghbox-preview\.js\?v=0\.1\.0$/.test(u))).toHaveLength(1)
+  expect(urls.filter((u) => /arghbox-preview\.js\?v=0\.1\.1$/.test(u))).toHaveLength(1)
 
   const btn = voteBtn(page, 'Export my results as CSV')
   await btn.click()
@@ -1838,7 +1838,7 @@ test('startup that bailed leaves a harmless API, and a second correct copy still
   // a corrected copy (for example a tag manager retrying) is not blocked by the failed one
   await page.evaluate(() => new Promise((resolve) => {
     const s = document.createElement('script')
-    s.src = '/arghbox/arghbox.js?v=0.1.0'
+    s.src = '/arghbox/arghbox.js?v=0.1.1'
     s.onload = resolve
     document.head.appendChild(s)
   }))
@@ -1851,12 +1851,12 @@ test('startup that bailed leaves a harmless API, and a second correct copy still
 
 test('the loader finds its own tag by the LAST arghbox.js script when currentScript is not available', async ({ page, servers }) => {
   await load(page, servers, { widget: '0' })
-  const src = await (await page.request.get(`${servers.siteUrl}/arghbox/arghbox.js?v=0.1.0`)).text()
+  const src = await (await page.request.get(`${servers.siteUrl}/arghbox/arghbox.js?v=0.1.1`)).text()
   await page.evaluate((code) => {
     for (const label of ['First', 'Last']) {
       const s = document.createElement('script')
       s.type = 'text/plain' // never executes, only to be found
-      s.src = '/arghbox/arghbox.js?v=0.1.0'
+      s.src = '/arghbox/arghbox.js?v=0.1.1'
       s.setAttribute('data-label', label)
       document.body.appendChild(s)
     }
@@ -2104,7 +2104,7 @@ test('re-initialising the loader 5 times leaves one set of listeners: one hashch
   const reload = (i, reset) => page.evaluate(([n, del]) => new Promise((resolve) => {
     if (del) delete window.ArghBox // the host "resets" the widget
     const s = document.createElement('script')
-    s.src = `/arghbox/arghbox.js?v=0.1.0&again=${n}`
+    s.src = `/arghbox/arghbox.js?v=0.1.1&again=${n}`
     s.onload = () => resolve()
     document.head.appendChild(s)
   }), [i, reset])
@@ -2298,7 +2298,7 @@ test('arghbox:ready fires once per successful start, never on a bailed start', a
   // a second copy of the loader while the first one runs: no second start, no second event
   await page.evaluate(() => new Promise((resolve) => {
     const s = document.createElement('script')
-    s.src = '/arghbox/arghbox.js?v=0.1.0&again=1'
+    s.src = '/arghbox/arghbox.js?v=0.1.1&again=1'
     s.onload = resolve
     document.head.appendChild(s)
   }))
@@ -2319,7 +2319,7 @@ test('arghbox:ready is not fired when startup bails, and fires once for the copy
   expect(await page.evaluate(() => window.__ready)).toBe(0)
   await page.evaluate(() => new Promise((resolve) => {
     const s = document.createElement('script')
-    s.src = '/arghbox/arghbox.js?v=0.1.0&again=1'
+    s.src = '/arghbox/arghbox.js?v=0.1.1&again=1'
     s.onload = resolve
     document.head.appendChild(s)
   }))

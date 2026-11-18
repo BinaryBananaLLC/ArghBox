@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-18
+
 ### Added
 
 - **Local preview:** on `localhost`, `127.0.0.1` or `*.localhost`, when no ArghBox answers (no server, no PHP, no `config.php`), the dialog shows sample entries and a "Local preview" note instead of an error. Voting and adding work and save nothing, so a site can try its integration before it has a box. `window.ArghBoxConfig = { localPreview: false }` turns it off. See "Test on your computer" in `docs/install.md`.

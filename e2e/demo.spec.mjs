@@ -126,7 +126,7 @@ test('exports download as JSON, CSV and Jira CSV', async ({ stack }) => {
   expect(json.status).toBe(200)
   expect(json.headers.get('content-disposition')).toMatch(/attachment; filename="arghbox-.*\.json"/)
   expect(json.json.entries.length).toBeGreaterThan(10)
-  expect(json.json.version).toBe('0.1.0')
+  expect(json.json.version).toBe('0.1.1')
 
   const csv = await stack.admin('admin.export', { query: { format: 'csv' } })
   expect(csv.headers.get('content-disposition')).toMatch(/\.csv"/)
@@ -156,7 +156,7 @@ test('before any interaction the widget adds one script request and nothing else
   await page.goto(stack.siteUrl + '/')
   await expect(tab(page)).toBeVisible()
   await page.waitForLoadState('networkidle')
-  expect(requests.filter((u) => u.startsWith('/arghbox/'))).toEqual(['/arghbox/arghbox.js?v=0.1.0'])
+  expect(requests.filter((u) => u.startsWith('/arghbox/'))).toEqual(['/arghbox/arghbox.js?v=0.1.1'])
   expect(requests.filter((u) => !u.startsWith('/arghbox/') && !ASSET_REQUEST.test(u) && u !== '/')).toEqual([])
   expect(external).toEqual([])
 })
@@ -253,7 +253,7 @@ test('the loader tag does not block rendering: deferred, not in <head>, last scr
     const all = [...document.querySelectorAll('script')]
     return { defer: s.defer, async: s.async, inHead: !!s.closest('head'), last: all[all.length - 1] === s, version: new URL(s.src).searchParams.get('v') }
   })
-  expect(tag).toEqual({ defer: true, async: false, inHead: false, last: true, version: '0.1.0' })
+  expect(tag).toEqual({ defer: true, async: false, inHead: false, last: true, version: '0.1.1' })
 })
 
 test('caching: the API is never cached, the feed for 10 minutes, and .htaccess caches the scripts and strings for an hour', async ({ page, stack }) => {

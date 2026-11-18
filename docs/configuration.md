@@ -71,7 +71,7 @@ Apps show the board in a WebView with `arghbox/app.html`. It takes URL parameter
 ## Script tag attributes
 
 ```html
-<script src="/arghbox/arghbox.js?v=0.1.0" defer
+<script src="/arghbox/arghbox.js?v=0.1.1" defer
         data-position="left" data-theme="host" data-accent="#2563eb"></script>
 ```
 
@@ -189,7 +189,7 @@ Every entry records the page path (never the query or the hash), and the add for
     }
   };
 </script>
-<script src="/arghbox/arghbox.js?v=0.1.0" defer></script>
+<script src="/arghbox/arghbox.js?v=0.1.1" defer></script>
 ```
 
 What the function returns is what the form shows and what is stored. Return `''` to record no page at all.

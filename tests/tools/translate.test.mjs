@@ -10,7 +10,7 @@ import * as T from '../../tools/translate.mjs'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const en = {
-  _meta: { lang: 'en', name: 'English', version: '0.1.0' },
+  _meta: { lang: 'en', name: 'English', version: '0.1.1' },
   'tab.label': 'Feedback',
   'hello': 'Hello {name}',
   'votes.one': '{n} vote',
