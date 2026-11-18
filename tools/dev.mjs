@@ -57,7 +57,8 @@ if (opts.help) {
   --port N              Port (default 8787)
   --seed                Load tests/fixtures/demo-seed.json when the box is empty
   --fresh               Wipe the data of this dev folder first
-  --origin URL          Allow one more origin to call the API (repeatable)
+  --origin URL          Allow one more origin to call the API (repeatable; http://localhost and
+                        http://127.0.0.1 on any port are always allowed)
   --data DIR            Data folder (default <dev-dir>/data)
   --site DIR            Serve this folder instead of demo/ (a site that installs ArghBox)
   --dev-dir DIR         Where everything generated goes: config.php, tokens, site.json, data
@@ -98,7 +99,8 @@ writeConfig(configPath, {
   owner_token_sha256: sha(ownerToken),
   triage_token_sha256: sha(triageToken),
   trusted_ip_header: '',
-  allowed_origins: ['http://localhost:5173', 'http://localhost:4173', ...opts.origins],
+  // any port on this machine: a site's own dev server (Vite, VitePress, Next, ...) can use the box whatever port it got
+  allowed_origins: ['http://localhost:*', 'http://127.0.0.1:*', ...opts.origins],
   data_dir: dataDir,
   moderation: opts.moderation,
   credit: true,

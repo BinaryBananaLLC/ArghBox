@@ -28,7 +28,7 @@ Options -Indexes
 
 # Static assets: one hour. Host pages bust the cache with ?v=<version>.
 <IfModule mod_headers.c>
-  <FilesMatch "^(arghbox|arghbox-app|app-page)\.js$">
+  <FilesMatch "^(arghbox|arghbox-app|arghbox-preview|app-page)\.js$">
     Header set Cache-Control "public, max-age=3600"
   </FilesMatch>
   # The mobile app page changes with each release: always revalidate. no-transform keeps Cloudflare from injecting

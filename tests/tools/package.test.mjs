@@ -42,7 +42,7 @@ test('the version is the same in package.json, arghbox/VERSION, lib/version.php 
 test('the version in the widget files and in app.html is the package version', () => {
   const v = PKG.version
   const read = (f) => fs.readFileSync(path.join(REPO, 'arghbox', f), 'utf8')
-  for (const f of ['arghbox.js', 'arghbox-app.js', 'app-page.js']) assert.ok(read(f).startsWith(`/*! ArghBox ${v} `), `${f} header`)
+  for (const f of ['arghbox.js', 'arghbox-app.js', 'arghbox-preview.js', 'app-page.js']) assert.ok(read(f).startsWith(`/*! ArghBox ${v} `), `${f} header`)
   assert.ok(read('app.html').includes(`<script src="app-page.js?v=${v}"></script>`), 'app.html loads app-page.js?v=<version>')
 })
 
@@ -149,9 +149,9 @@ test('arghbox help, version and unknown commands', () => {
   assert.match(missing.stderr, /--public needs a value/)
 })
 
-test('.htaccess: app-page.js is cached like the other scripts; app.html and the admin assets revalidate with no-transform', () => {
+test('.htaccess: app-page.js and arghbox-preview.js are cached like the other scripts; app.html and the admin assets revalidate with no-transform', () => {
   const ht = fs.readFileSync(path.join(REPO, 'arghbox', '.htaccess'), 'utf8')
-  assert.match(ht, /\^\(arghbox\|arghbox-app\|app-page\)\\.js\$/)
+  assert.match(ht, /\^\(arghbox\|arghbox-app\|arghbox-preview\|app-page\)\\.js\$/)
   assert.match(ht, /<FilesMatch "\^\(app\\.html\|admin\\.\(css\|js\)\)\$">\s*Header set Cache-Control "no-cache, no-transform"/)
   assert.match(ht, /<FilesMatch "\^app\\\.html\$">\s*Header set X-Frame-Options "DENY"\s*Header set Content-Security-Policy "frame-ancestors 'none'"/)
 })

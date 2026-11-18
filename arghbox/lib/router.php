@@ -12,6 +12,27 @@ function ab_same_origin(string $origin): bool
     return $host === strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 }
 
+/**
+ * Is a cross-origin caller listed in allowed_origins? Entries are exact origins; an entry ending in ":*"
+ * (e.g. "http://localhost:*") allows that scheme and host on any port, for local development servers.
+ */
+function ab_origin_allowed(string $origin, array $allowed): bool
+{
+    $origin = rtrim($origin, '/');
+    foreach ($allowed as $o) {
+        if (!is_string($o)) {
+            continue;
+        }
+        if ($o === $origin) {
+            return true;
+        }
+        if (substr($o, -2) === ':*' && preg_match('~^' . preg_quote(substr($o, 0, -2), '~') . '(:[0-9]{1,5})?$~D', $origin)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** Public actions: name => [method, handler]. */
 function ab_public_routes(): array
 {
@@ -73,7 +94,7 @@ function ab_dispatch(): void
 
     if ($method === 'OPTIONS') {
         if ($crossOrigin && !$isAdmin) {
-            if (!in_array(rtrim($origin, '/'), $cfg['allowed_origins'], true)) {
+            if (!ab_origin_allowed($origin, $cfg['allowed_origins'])) {
                 throw new AbError(403, 'origin_not_allowed', 'This origin is not allowed.');
             }
             ab_cors($origin);
@@ -82,7 +103,7 @@ function ab_dispatch(): void
     }
 
     if ($crossOrigin) {
-        $allowed = !$isAdmin && in_array(rtrim($origin, '/'), $cfg['allowed_origins'], true);
+        $allowed = !$isAdmin && ab_origin_allowed($origin, $cfg['allowed_origins']);
         if ($allowed) {
             ab_cors($origin);
         } elseif ($method === 'POST') {

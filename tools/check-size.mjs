@@ -10,7 +10,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 // downloaded when a visitor shows intent (hover, focus or click on the tab), so it has more room.
 const budgets = [
   ['arghbox/arghbox.js', 4 * 1024],
-  ['arghbox/arghbox-app.js', 20 * 1024],
+  ['arghbox/arghbox-app.js', 21 * 1024],
   // The mobile app page script: tiny too, it runs before anything shows in the app's WebView.
   ['arghbox/app-page.js', 2 * 1024],
 ]

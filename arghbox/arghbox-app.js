@@ -3,15 +3,18 @@
   'use strict';
 
   var VERSION = '0.1.0';
-  var FONT = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+  var FONT = 'var(--arghbox-font,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif)';
 
+  // ArghBox palette (art/README.md); hosts override it with --arghbox-* properties (docs/configuration.md)
   var CSS =
-    '.ab{--bg:#fff;--fg:#1c1b1f;--mut:#5c5866;--line:#e4e1ea;--ib:#86828f;--card:#f6f4f9;--ring:#1a56db;' +
-    '--act:var(--acs);--shadow:0 14px 44px rgba(20,16,30,.3);--tint:color-mix(in srgb,var(--ac) 10%,var(--bg))}' +
-    '.ab[data-dark]{--bg:#1d1c22;--fg:#f1eff5;--mut:#aaa6b5;--line:#33313b;--ib:#7f7b8c;--card:#27262e;--ring:#8ab4ff;' +
+    '.ab{--bg:var(--arghbox-bg,#fff);--fg:var(--arghbox-fg,#2b1d1a);--mut:var(--arghbox-muted,#6e5d56);--line:var(--arghbox-line,#eee3d6);' +
+    '--ib:var(--arghbox-border,#8f7c73);--card:var(--arghbox-card,#fff6e9);--ring:#1a56db;' +
+    '--act:var(--acs);--shadow:0 14px 44px rgba(43,29,26,.3);--tint:color-mix(in srgb,var(--ac) 10%,var(--bg))}' +
+    '.ab[data-dark]{--bg:var(--arghbox-bg,#1f1613);--fg:var(--arghbox-fg,#fff6e9);--mut:var(--arghbox-muted,#b8a8a0);--line:var(--arghbox-line,#3b2d28);' +
+    '--ib:var(--arghbox-border,#8a7870);--card:var(--arghbox-card,#2c211d);--ring:#8ab4ff;' +
     '--act:color-mix(in srgb,var(--ac) 62%,#fff);--shadow:0 14px 44px rgba(0,0,0,.65);--tint:color-mix(in srgb,var(--ac) 16%,var(--bg))}' +
     '.ab *{box-sizing:border-box}' +
-    '.ov{position:fixed;inset:0;overscroll-behavior:contain;z-index:calc(var(--z,2147483000) + 1);background:rgba(15,12,22,.38);font:400 14px/1.45 ' + FONT + ';color:var(--fg)}' +
+    '.ov{position:fixed;inset:0;overscroll-behavior:contain;z-index:calc(var(--z,2147483000) + 1);background:rgba(31,22,19,.4);font:400 14px/1.45 ' + FONT + ';color:var(--fg)}' +
     '.panel{position:absolute;top:12px;bottom:12px;right:12px;width:420px;max-width:calc(100% - 24px);display:flex;flex-direction:column;' +
     'background:var(--bg);color:var(--fg);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;outline:0}' +
     '[data-pos=left] .panel{right:auto;left:12px}' +
@@ -37,6 +40,7 @@
     '.pri{background:var(--acs);color:#fff}.pri[disabled]{opacity:.65;cursor:default}' +
     '.sec{border:1.5px solid var(--ib)}' +
     '.cr{text-align:center;font-size:12px}.cr a{color:var(--mut)}' +
+    '.mk{width:16px;height:16px;margin-right:5px;vertical-align:-3px}.mk path{fill:#e8553d;stroke:var(--fg);stroke-width:2.4;stroke-linejoin:round}.mk path:first-child{fill:#ffc83d}' +
     '.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}' +
     '.tabs{display:flex;flex:1;background:var(--card);border-radius:12px;padding:3px;gap:3px;min-width:200px}' +
     '.tabs button{flex:1;min-height:44px;border-radius:9px;font-weight:600;color:var(--mut);text-align:center}' +
@@ -371,6 +375,17 @@
     s.appendChild(g);
     return s;
   }
+  // the ArghBox mark (art/logo-mark-small.svg) for the credit
+  function mark() {
+    var NS = 'http://www.w3.org/2000/svg', g = document.createElementNS(NS, 'svg');
+    g.setAttribute('viewBox', '0 0 32 32');
+    g.setAttribute('class', 'mk');
+    g.setAttribute('aria-hidden', 'true');
+    ['M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z', 'M3 13h26v8H3zM5 21v8h22v-8M10 17h12'].forEach(function (d) {
+      g.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', d);
+    });
+    return g;
+  }
   function deepActive() {
     var a = document.activeElement;
     while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
@@ -445,7 +460,7 @@
       for (pct = 78; pct > 30; pct -= 6) if (ratio(mix([0, 0, 0], pct / 100), [255, 255, 255]) >= 4.7) break;
       wrap.style.setProperty('--acs', 'color-mix(in srgb,var(--ac) ' + pct + '%,#000)');
       if (dark) {
-        for (pct = 62; pct > 10; pct -= 8) if (ratio(mix([255, 255, 255], pct / 100), [39, 38, 46]) >= 5) break;
+        for (pct = 62; pct > 10; pct -= 8) if (ratio(mix([255, 255, 255], pct / 100), [44, 33, 29]) >= 5) break;
         wrap.style.setProperty('--act', 'color-mix(in srgb,var(--ac) ' + pct + '%,#fff)');
       } else wrap.style.removeProperty('--act');
     } catch (e) { }
@@ -515,6 +530,7 @@
 
     function call(action, o) {
       o = o || {};
+      if (S.dev) return S.dev(action, o.body || {});
       var headers = {};
       var init = { method: o.body ? 'POST' : 'GET', headers: headers, credentials: 'omit' };
       if (o.voter) headers['X-ArghBox-Voter'] = voter();
@@ -523,7 +539,7 @@
       return fetchBody(url, init, o.body ? 25000 : 15000).then(function (x) {
         var r = x.r, j = null;
         try { j = JSON.parse(x.txt); } catch (e) { }
-        if (!j) throw { code: 'server_error' };
+        if (!j) throw { code: 'server_error', raw: 1 }; // not JSON: no ArghBox answered
         if (j.ok === false || !r.ok) throw { code: j.error || 'server_error', field: j.field, retry_after: j.retry_after || +r.headers.get('Retry-After') || 0 };
         return j;
       }, function () { throw { code: 'network' }; }).catch(function (e) {
@@ -549,14 +565,31 @@
       return stringsP;
     }
 
+    // Local preview (SPEC 8): on localhost with no ArghBox answering, sample entries from arghbox-preview.js
+    function preview(e) {
+      if (S.dev || (window.ArghBoxConfig || {}).localPreview === false || !(e.code === 'network' || e.code === 'not_configured' || e.raw) ||
+        !/^(localhost|127.0.0.1|[::1])$|.localhost$/.test(window.location.hostname)) return Promise.reject(e);
+      return new Promise(function (ok, no) {
+        var s = document.createElement('script');
+        if (cfg.nonce) s.nonce = cfg.nonce;
+        s.src = cfg.su(cfg.base + 'arghbox-preview.js?v=' + cfg.ver);
+        s.onload = s.onerror = function () {
+          s.remove();
+          S.dev = window.__arghboxPreview && window.__arghboxPreview(cfg.api, e.code);
+          if (S.dev) ok(); else no(e);
+        };
+        document.head.appendChild(s);
+      });
+    }
     function loadList() {
       if (!listP) {
-        listP = call('list', { voter: true }).then(function (r) {
+        var get = function () { return call('list', { voter: true }); };
+        listP = get().catch(function (e) { return preview(e).then(get); }).then(function (r) {
           var vis = dropHidden(r.entries || [], r.tag_counts || [], hiddenIds());
           setEntries(vis.entries);
           S.tagCounts = vis.counts;
           S.contact = contactUrl(r.contact);
-          S.appPass = pg && r.app_pass === true;
+          S.appPass = (pg || !!S.dev) && r.app_pass === true;
           S.voted = {};
           (r.voted || []).forEach(function (id) { S.voted[id] = 1; });
           S.site = r.site || {};
@@ -720,7 +753,7 @@
     function credit() {
       var a = [];
       if (S.contact) a.push(h('a', { href: S.contact, target: '_blank', rel: 'noopener', text: t('contact') }));
-      if (S.credit && cfg.credit !== false) a.push(h('a', { href: 'https://github.com/BinaryBananaLLC/ArghBox', target: '_blank', rel: 'noopener', text: t('credit') }));
+      if (S.credit && cfg.credit !== false) a.push(h('a', { href: 'https://arghbox.com/', target: '_blank', rel: 'noopener' }, [mark(), t('credit')]));
       if (a.length > 1) a.splice(1, 0, ' \u00b7 ');
       return a.length ? h('div', { class: 'cr' }, a) : null;
     }
@@ -1167,7 +1200,7 @@
         h('div', { class: 'ft' }, [F.submit, credit()])
       ]);
       if (!S.entries.length && S.listState === 'ok') F.sim.hidden = true;
-      return { hd: header(t('add.title'), '', back), vw: form, focus: F.title };
+      return { hd: header(t('add.title'), t('add.subtitle', { site: siteName() }), back), vw: form, focus: F.title };
     }
 
     function viewThanks() {
@@ -1175,7 +1208,7 @@
       return {
         hd: header(t(pub ? 'thanks.published' : 'thanks.pending'), ''),
         vw: h('div', { class: 'vw' }, [
-          h('div', { class: 'sc thx' }, [h('span', { class: 'ok', 'aria-hidden': 'true' }, [ic('ok')]), h('p', { text: t(pub ? 'thanks.published.text' : 'thanks.pending.text') })]),
+          h('div', { class: 'sc thx' }, [h('span', { class: 'ok', 'aria-hidden': 'true' }, [ic('ok')]), h('p', { text: t(pub ? 'thanks.published.text' : 'thanks.pending.text', { site: siteName() }) })]),
           h('div', { class: 'ft' }, [
             h('button', { type: 'button', class: 'pri', text: t('thanks.back'), onclick: function () { setView('list'); } }),
             h('button', { type: 'button', class: 'sec', text: t('thanks.again'), onclick: function () { setView('add'); } }),

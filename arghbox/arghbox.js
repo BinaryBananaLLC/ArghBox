@@ -1,4 +1,4 @@
-/*! ArghBox 0.1.0 | loader: tab + JS API | MIT | https://github.com/BinaryBananaLLC/ArghBox */
+/*! ArghBox 0.1.0 | MIT | arghbox.com */
 (function (window, document) {
   'use strict';
   var VERSION = '0.1.0';
@@ -26,28 +26,27 @@
     return k === 'add' ? { view: 'add', type: 'idea' } : k === 'bug' ? { view: 'add', type: 'bug' } : { view: 'list', id: +k || 0 };
   }
 
-  var CSS = '.ab{all:initial;font:600 14px/1.2 system-ui,sans-serif;--ac:var(--accent,#e8553d);--acs:color-mix(in srgb,var(--ac) 78%,#000)}' +
+  var CSS = '.ab{all:initial;font:600 14px/1.2 var(--arghbox-font,system-ui,sans-serif);--ac:var(--arghbox-accent,#e8553d);--acs:color-mix(in srgb,var(--ac) 78%,#000)}' +
     '@supports(color:oklch(from red l c h)){.ab{--acs:oklch(from color-mix(in srgb,var(--ac) 78%,#000) min(l,.5) c h)}}' +
-    '.tw,.t{display:flex;flex-direction:column}' +
+    '.tw:not([hidden]),.t{display:flex;flex-direction:column}' +
     '.tw{position:fixed;top:var(--off);z-index:var(--z);width:40px;transform:translateY(-50%);background:var(--acs);color:#fff;box-shadow:0 2px 14px #0005}' +
-    '.tw[hidden]{display:none}' +
     '[data-pos=right] .tw{right:0;border-radius:14px 0 0 14px}' +
     '[data-pos=left] .tw{left:0;border-radius:0 14px 14px 0;flex-direction:column-reverse}' +
-    '.tw button{border:0;margin:0;background:none;color:inherit;font:inherit;cursor:pointer}' +
-    '.t{align-items:center;gap:8px;padding:12px 0}.t[aria-busy=true]{opacity:.7}' +
+    ':where(.tw button){all:unset;cursor:pointer}' +
+    '.t{align-items:center;gap:8px;padding:12px 0}.t[aria-busy]{opacity:.7}' +
     '.l{writing-mode:vertical-rl}[data-pos=left] .l{transform:rotate(180deg)}' +
-    '.x{height:32px;font-size:20px;border-block:1px solid #fff6}' +
-    '.tw button:focus-visible{outline:3px solid #fff;outline-offset:-5px}' +
-    '.t:before{content:"";width:16px;height:12px;border:2px solid;border-radius:4px;background:linear-gradient(currentColor,currentColor) 50% 40%/8px 2px no-repeat}' +
-    '.m{position:absolute;top:50%;right:48px;transform:translateY(-50%);width:240px;padding:10px 12px;border-radius:10px;background:#1c1b1f;color:#fff}[data-pos=left] .m{right:auto;left:48px}';
+    '.x{line-height:32px;text-align:center;font-size:20px;border-block:1px solid #fff6}' +
+    '.tw :focus-visible{outline:3px solid #fff;outline-offset:-5px}' +
+    '.t svg{width:28px;padding:3px;border-radius:50%;background:#fff6e9}' +
+    '.t path{fill:var(--ac);stroke:#2b1d1a;stroke-width:2;stroke-linejoin:round}.t path:first-child{fill:#ffc83d}' +
+    '.m{position:absolute;right:48px;width:240px;padding:10px;border-radius:10px;background:#2b1d1a;color:#fff}[data-pos=left] .m{right:auto;left:48px}';
 
   var cfg, wrap, shadow, host, tw, tabBtn, ctl, appP, prefetched;
   var forced, memDismiss, tabOff, preview, days, narrow, seq = 0, lastHash = '', shown;
 
   function ls(k, v) {
     try {
-      if (v === undefined) return localStorage.getItem(k);
-      if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+      return v === undefined ? localStorage.getItem(k) : v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
     } catch (e) { }
   }
   function emit(name, detail) { dispatchEvent(new CustomEvent(name, { detail: detail })); }
@@ -56,21 +55,11 @@
     tw.hidden = h;
     if (shown !== !h) {
       shown = !h;
-      shadow.host.setAttribute('data-tab', shown ? 'shown' : 'hidden');
+      host.setAttribute('data-tab', shown ? 'shown' : 'hidden');
       emit('arghbox:tab', { visible: shown });
     }
   }
-  function addSheet(root, css, nonce) {
-    try {
-      var sh = new CSSStyleSheet();
-      sh.replaceSync(css);
-      root.adoptedStyleSheets = [sh];
-    } catch (e) {
-      var st = root.appendChild(document.createElement('style'));
-      st.nonce = nonce;
-      st.textContent = css;
-    }
-  }
+  function hide() { forced = 0; memDismiss = 1; paintTab(); }
   function attach() {
     if (!host.isConnected && document.body) document.body.appendChild(host);
   }
@@ -78,14 +67,12 @@
   function loadApp() {
     return window.__arghboxApp ? Promise.resolve(window.__arghboxApp) : appP || (appP = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      function done(ok) {
-        s.remove();
-        if (ok && window.__arghboxApp) resolve(window.__arghboxApp); else { appP = 0; reject(); }
-      }
-      if (cfg.nonce) s.nonce = cfg.nonce;
+      s.nonce = cfg.nonce;
       s.src = cfg.su(cfg.appUrl);
-      s.onload = function () { done(1); };
-      s.onerror = function () { done(0); };
+      s.onload = s.onerror = function () {
+        s.remove();
+        if (window.__arghboxApp) resolve(window.__arghboxApp); else { appP = 0; reject(); }
+      };
       document.head.appendChild(s);
     }));
   }
@@ -94,23 +81,21 @@
     attach();
     var from = document.activeElement;
     while (from && from.shadowRoot && from.shadowRoot.activeElement) from = from.shadowRoot.activeElement;
-    if (!from || from === document.body || from === document.documentElement) from = tabBtn;
+    if (!from || from === document.body) from = tabBtn;
     var me = ++seq;
     tabBtn.setAttribute('aria-busy', 'true');
     return loadApp().then(function (app) {
       if (me !== seq) return;
-      tabBtn.removeAttribute('aria-busy');
       ctl = ctl || app.mount(shadow, cfg);
       ctl.open(o || {}, from);
     }).catch(function () {
       if (me !== seq) return;
-      tabBtn.removeAttribute('aria-busy');
       var m = shadow.querySelector('.m') || tw.appendChild(document.createElement('div'));
       m.className = 'm';
       m.setAttribute('role', 'alert');
       m.textContent = 'Could not load. Are you offline?';
       setTimeout(function () { m.remove(); }, 7000);
-    });
+    }).then(function () { if (me === seq) tabBtn.removeAttribute('aria-busy'); });
   }
 
   function go(r) {
@@ -162,7 +147,7 @@
       api: data('api', base + 'api.php'), base: base, ver: v,
       appUrl: base + 'arghbox-app.js?v=' + v, lang: lang, wrap: wrap, theme: data('theme', 'auto'),
       tone: data('tone') === 'neutral' ? 'neutral' : 'funny', position: pos, z: parseInt(data('z'), 10) || 2147483000,
-      credit: data('credit') !== 'off', page: data('page', ''), nonce: script.nonce || script.getAttribute('nonce') || '',
+      credit: data('credit') !== 'off', page: data('page', ''), nonce: script.nonce,
       su: function (u) { return pol ? pol.createScriptURL(u) : u; }
     };
 
@@ -171,35 +156,37 @@
     host.style.cssText = 'all:initial!important;position:fixed!important;z-index:' + cfg.z + '!important';
     ['letter-spacing', 'word-spacing', 'line-height'].forEach(function (p) { host.style.removeProperty(p); });
     shadow = host.attachShadow({ mode: 'open' });
-    addSheet(shadow, CSS, cfg.nonce);
+    var sh = new CSSStyleSheet();
+    sh.replaceSync(CSS);
+    shadow.adoptedStyleSheets = [sh];
     wrap.className = 'ab';
     wrap.setAttribute('data-pos', pos);
     wrap.style.cssText = '--z:' + cfg.z + ';--off:' + off + '%';
-    if (data('accent')) wrap.style.setProperty('--accent', data('accent'));
+    if (data('accent')) wrap.style.setProperty('--arghbox-accent', data('accent'));
 
     tw = document.createElement('div');
     tw.className = 'tw';
     tabBtn = tw.appendChild(document.createElement('button'));
     tabBtn.className = 't';
     tabBtn.setAttribute('aria-haspopup', 'dialog');
+    var NS = 'http://www.w3.org/2000/svg', svg = tabBtn.appendChild(document.createElementNS(NS, 'svg'));
+    svg.setAttribute('viewBox', '0 0 32 32');
+    svg.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z');
+    svg.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M3 13h26v8H3zM5 21v8h22v-8M10 17h12');
     tabBtn.appendChild(document.createElement('span')).className = 'l';
     tabBtn.lastChild.textContent = label;
     tabBtn.onclick = function () { open({}); };
-    ['pointerenter', 'focus'].forEach(function (ev) {
-      tabBtn.addEventListener(ev, function () {
-        if (!prefetched) { prefetched = 1; fetch(cfg.appUrl, { credentials: 'omit', mode: 'no-cors' }).catch(function () {}); }
-      }, { passive: true });
-    });
+    tabBtn.onpointerenter = tabBtn.onfocus = function () {
+      if (!prefetched) { prefetched = 1; fetch(cfg.appUrl, { credentials: 'omit', mode: 'no-cors' }).catch(function () {}); }
+    };
     if (data('closable') !== 'off') {
       var x = tw.appendChild(document.createElement('button'));
       x.className = 'x';
       x.setAttribute('aria-label', 'Hide feedback button');
       x.textContent = '\u00d7';
       x.onclick = function () {
-        memDismiss = 1;
         if (days > 0) ls('arghbox:hidden', String(Date.now() + days * 864e5));
-        forced = 0;
-        paintTab();
+        hide();
         emit('arghbox:dismiss');
       };
     }
@@ -229,7 +216,7 @@
     api.open = open;
     api.close = function () { seq++; tabBtn.removeAttribute('aria-busy'); try { ctl.close(); } catch (e) {} };
     api.showTab = function () { attach(); forced = 1; memDismiss = 0; ls('arghbox:hidden', null); paintTab(); };
-    api.hideTab = function () { forced = 0; memDismiss = 1; paintTab(); };
+    api.hideTab = hide;
     api._on = 1;
     route();
     emit('arghbox:ready');
@@ -239,7 +226,7 @@
     if (api._on) return;
     var old = document.getElementById('arghbox-root');
     if (old && old._off) old._off();
-    try { init(); } catch (e) { if (host && host.parentNode) host.parentNode.removeChild(host); }
+    try { init(); } catch (e) { if (host) host.remove(); }
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })(window, document);
