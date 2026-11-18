@@ -44,6 +44,7 @@ return [
 
     // Extra origins allowed to call the public API from a browser (CORS).
     // The site's own origin always works. Example: ['https://www.example.com'].
+    // An origin ending in ":*" allows that host on any port, for development: ['http://localhost:*'].
     'allowed_origins' => [],
 
     // Absolute path outside the web root, or null for automatic (arghbox-private/ next to the web root; see docs).

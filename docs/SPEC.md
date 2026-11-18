@@ -37,7 +37,8 @@ fix one of them in the same change. Version 0.1.0.
 ```
 arghbox/                  the folder site owners upload, served at /arghbox/
   arghbox.js              loader: tab + JS API, < 4 KB gzipped
-  arghbox-app.js          dialog, loaded on first intent, < 20 KB gzipped
+  arghbox-app.js          dialog, loaded on first intent, < 21 KB gzipped
+  arghbox-preview.js      the local preview's in-memory box, loaded only on a local dev host (section 8)
   app.html                the mobile app page: the dialog full screen, for an app's WebView (section 8b)
   app-page.js             that page's script: URL parameters, loader tag, bridges to the app, < 2 KB gzipped
   i18n/en.json            widget strings (source of truth for translations)
@@ -84,7 +85,7 @@ Version string `0.1.0` appears in `arghbox/VERSION`, `ArghBox.version` in both J
 | `owner_token_sha256` | `''` | sha256 hex of the owner token (admin page sign-in, admin API) |
 | `triage_token_sha256` | `''` | sha256 hex of the triage token (admin API only) |
 | `trusted_ip_header` | `''` | `''` uses `REMOTE_ADDR`; `'HTTP_CF_CONNECTING_IP'` behind Cloudflare; `'HTTP_X_REAL_IP'` for Hostinger CDN |
-| `allowed_origins` | `[]` | Extra origins allowed to call the public API (CORS). Same origin always works. |
+| `allowed_origins` | `[]` | Extra origins allowed to call the public API (CORS). Same origin always works. An entry ending in `:*` (`'http://localhost:*'`) allows that scheme and host on any port, or none; meant for development |
 | `data_dir` | `null` | Absolute path; `null` means automatic (below) |
 | `moderation` | `'pending'` | `'pending'`: new entries wait for triage. `'publish'`: shown at once. |
 | `auto_apply_min_confidence` | `80` | Triage decisions below it are stored as `flag` (owner decides) |
@@ -284,7 +285,8 @@ Error codes: `bad_request`, `invalid_input`, `method_not_allowed`, `not_found`,
 (403: a read-only token on a write, or the owner token on MCP), `conflict`, `not_configured`,
 `busy` (503 + `Retry-After: 2`: another PHP worker holds the database; retry), `server_error`.
 
-**CORS.** Same-origin requests need nothing. For an `Origin` in `allowed_origins`, answer with
+**CORS.** Same-origin requests need nothing. For an `Origin` in `allowed_origins` (exact match, or
+an entry `<scheme>://<host>:*` matching that scheme and host with any port or none), answer with
 `Access-Control-Allow-Origin: <origin>`, `Vary: Origin`, `Access-Control-Allow-Methods: GET,
 POST, OPTIONS`, `Access-Control-Allow-Headers: Content-Type, X-ArghBox-Voter`, `Access-Control-Max-Age:
 600`, and answer `OPTIONS` with 204. A POST whose `Origin` is neither same-origin nor allowed
@@ -676,7 +678,7 @@ Attributes (all optional):
 | `data-label` | tab text | `"Feedback"` (from strings) |
 | `data-lang` | language code | `<html lang>`, else `en` |
 | `data-theme` | `auto` (prefers-color-scheme), `light`, `dark`, `host` (follows `html.dark` class or `html[data-theme="dark"]`, watched with a MutationObserver) | `auto` |
-| `data-accent` | any CSS colour, including `var(--host-var)` (custom properties cross the shadow boundary) | `#e8553d` |
+| `data-accent` | any CSS colour, including `var(--host-var)` (custom properties cross the shadow boundary); sets `--arghbox-accent` on the wrapper (see Host styling) | `#e8553d` |
 | `data-tone` | `funny`, `neutral` | `funny` |
 | `data-tab` | `on`, `off` (no tab; open with the JS API or a `#arghbox` link) | `on` |
 | `data-tab-min-width` | viewport width in px below which the edge tab is not shown (it follows rotation and resizing). `ArghBox.open()`, `#arghbox` links and `ArghBox.showTab()` still work, and `#arghbox-root[data-tab]` and the `arghbox:tab` event follow. For pages that have their own Feedback button on narrow screens | `0` (always shown) |
@@ -714,9 +716,12 @@ window.ArghBox = {
   no network request at load.
 - Finds its own URL with `document.currentScript` (fallback: the last `script[src*="arghbox.js"]`).
 - Creates `<div id="arghbox-root">` at the end of `body` with an **open** Shadow DOM. Styles go
-  into the shadow root (adoptedStyleSheets when supported, else a `<style>` element). Nothing
-  else in the host DOM except the Turnstile container (below).
-- Renders the tab: vertical "Feedback" label on the chosen edge with a small box icon, and the ×
+  into the shadow root as a constructable stylesheet (`adoptedStyleSheets`, every supported browser
+  has it; the app keeps a `<style>` fallback). Nothing else in the host DOM except the Turnstile
+  container (below).
+- Renders the tab: vertical "Feedback" label on the chosen edge under the ArghBox mark (the burst
+  in yellow and the box in the accent, `art/logo-mark-small.svg` simplified, an inline SVG built
+  with `createElementNS`) on a cream badge, and the ×
   (a separate button with `aria-label="Hide feedback button"`). Keyboard focusable, visible
   focus ring, respects `prefers-reduced-motion`.
 - Prefetches `arghbox-app.js` on tab `pointerenter`, `focus` or `touchstart`; loads it on click
@@ -727,7 +732,7 @@ window.ArghBox = {
   (`tools/translate.mjs` rewrites this block), and the list of available languages between
   `/* arghbox:langs:start */` and `/* arghbox:langs:end */` as `var LANGS = ["en"];`.
 
-### App (`arghbox-app.js`, < 20 KB gzipped)
+### App (`arghbox-app.js`, < 21 KB gzipped)
 - Fetches `i18n/<lang>.json` (lang matched against `LANGS`: exact, then the part before `-`,
   else `en`) and `api.php?action=list` in parallel when it mounts.
 - **Dialog**: `role="dialog"`, `aria-modal="true"`, labelled by its title, focus trapped, Esc and
@@ -778,7 +783,8 @@ window.ArghBox = {
     - Similarity is computed in the browser from the loaded list, with no network: titles,
       aliases, tags and the start of the body; lowercase, accents and punctuation stripped,
       word overlap plus prefix matches.
-  - Thanks: "Your argh is in the box." (pending) or "Your argh is up." (publish mode).
+  - Thanks: "Your argh is in the box." (pending) or "Your argh is up." (publish mode), with "Thanks for helping
+    us improve {site}!".
   - **Report** (section 6b): the detail view of a visitor entry (never `source: owner`) has a small "Report"
     button. It opens an inline choice of four reasons (Spam, Rude or abusive, Not about this site or app,
     Something else) with "Send report" and "Cancel". Sending needs a pass, like voting. On success the entry id
@@ -804,8 +810,27 @@ window.ArghBox = {
   works and voting/adding show a friendly message.
 - **Errors**: every error code from section 6 maps to a friendly string; `rate_limited` shows
   the wait in minutes. The dialog never shows raw JSON.
-- **Credit**: when `credit` is true and `data-credit` is not `off`, a small "ArghBox" link in the
-  footer to `https://github.com/BinaryBananaLLC/ArghBox` (`rel="noopener"`, `target="_blank"`).
+- **Credit**: when `credit` is true and `data-credit` is not `off`, a small "Powered by ArghBox" link
+  with the ArghBox mark in its own colours (outline in the text colour) in the footer, to `https://arghbox.com/`
+  (`rel="noopener"`, `target="_blank"`).
+- **What the box is for**: every view says it in plain words. The list header has a subtitle ("Found a bug or
+  missing a feature on {site}? Tell us, or upvote what others asked for. No account needed."), the add form one
+  too ("... We read every one."). These follow the usual pattern of feedback widgets: a short title, one line on
+  what to do and that no account is needed, and a thank-you at the end.
+- **Local preview**: when the first `list` fails with `network`, `not_configured` or an answer that is not JSON
+  at all, on a page whose host is `localhost`, `127.0.0.1`, `[::1]` or `*.localhost`, and
+  `window.ArghBoxConfig.localPreview` is not `false`, the app loads `arghbox-preview.js?v=<version>` (with the
+  nonce and the Trusted Types policy) and sends every API call to its in-memory box instead: sample entries of
+  every type and status, voting and adding that work until a reload, no Turnstile (it answers `app_pass: true`),
+  no receipts, ids above 900000 so remembered votes and reports never touch a real box. The `welcome` text says
+  "Local preview", what did not answer (the API URL without its scheme, so it is not a link) and links to
+  `docs/install.md#test-on-your-computer`. A JSON error from a real box never switches to the preview.
+  Production hosts never load the file. The point: a site can try its integration (placement, colours, its own
+  buttons and links) on its dev server before it has PHP or a box.
+- **Host styling**: hosts restyle the widget with CSS custom properties set on `:root` or `#arghbox-root` (they
+  cross the shadow boundary): `--arghbox-accent` (what `data-accent` sets on the wrapper, so the attribute wins),
+  `--arghbox-bg`, `--arghbox-fg`, `--arghbox-muted`, `--arghbox-card`, `--arghbox-border`, `--arghbox-line` and
+  `--arghbox-font`. The colour ones apply to the theme that is showing. A host's plain `--accent` does not leak in.
 - **Copy**: funny by default, poking fun at frustration, never at the visitor; `data-tone="neutral"`
   switches to plain copy. Both tones are keys in `i18n/en.json` (`*.funny` / `*.neutral` pairs
   only where they differ).
@@ -818,14 +843,16 @@ fall back to `.other`, then to English. `_meta` key holds `{lang, name, version}
 ### Implementation details (settled while building the widget)
 
 - **String lookup order:** `key.<tone>.<plural>`, `key.<tone>.other`, `key.<tone>`,
-  `key.<plural>`, `key.other`, `key`, then the same in English. v1 has 126 keys and about 600
+  `key.<plural>`, `key.other`, `key`, then the same in English. v1 has about 140 keys and about 650
   English words.
 - **Client-side error keys:** `err.turnstile_unavailable`, `err.network` and
   `err.title_short`.
 - **Mount contract:** `window.__arghboxApp.mount(shadowRoot, cfg)` returns `{open(options,
   fromElement), close(), isOpen()}`. Pure helpers sit on `window.__arghboxApp.helpers` for the
   unit tests.
-- **Theme:** the app applies `data-theme`, not the loader. The tab uses accent colours only.
+- **Theme:** the app applies `data-theme`, not the loader. The tab uses accent colours only. Default tokens come
+  from the ArghBox palette (`art/README.md`): light `#fff` background, ink `#2b1d1a`, muted `#6e5d56`, cream
+  `#fff6e9` panels; dark night `#1f1613`, cream text, `#2c211d` panels. Text tokens pass 4.5:1, borders 3:1.
 - **Accent contrast:** filled buttons and the tab use the accent mixed 78% with black
   (`color-mix`), so white text passes WCAG AA. The plain accent is for highlights only.
 - **Prefetch:** done with `fetch(no-cors)`, so the loader adds nothing to the host's `<head>`.
@@ -1029,7 +1056,7 @@ Files: `skill/arghbox-triage/` — `SKILL.md`, `PROMPT.md`, `RULES.md`, `triage.
 
 `arghbox` on npmjs.com holds the `arghbox/` folder (without `config.php`, databases, `data/` contents, logs and `.bak` files), the triage skill, `bin/`, `index.mjs`/`index.d.ts`, `tools/install.mjs` and `tools/new-secrets.mjs`. It has no runtime dependencies. `package.json`, `arghbox/VERSION`, `lib/version.php` and the CHANGELOG heading always carry the same version (`tests/tools/package.test.mjs`). `.github/workflows/release.yml` publishes a version only when the owner runs it (Actions, Release, Run workflow, or a pushed `vX.Y.Z` tag). It checks the tag against package.json, npm and existing releases, builds the zips and the npm tarball with build provenance attestations, creates the GitHub Release (draft first, then published), and publishes to npm with `--provenance` (`--tag next` for pre-release versions). It runs no tests. `publishConfig` has no `provenance`, so a local `npm publish` works too.
 | `tools/translate.mjs <lang...> [--paid] [--all]` | **Owner only, paid** (Azure OpenAI). Translates missing or changed keys of `arghbox/i18n/en.json` into `i18n/<lang>.json`, updates the LABELS and LANGS blocks in `arghbox.js`. Reads `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` from the environment or the git-ignored `.secrets/azure-openai.json`. Without `--paid` it only prints what it would send and costs nothing. Agents never run it with `--paid`. |
-| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB, `arghbox-app.js` > 20 KB or `app-page.js` > 2 KB gzipped. |
+| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB, `arghbox-app.js` > 21 KB or `app-page.js` > 2 KB gzipped. |
 | `tools/render-art.mjs` | Renders the PNG art (favicons into `art/brand/`, social card, README banner) from `art/` sources with Playwright. |
 | `tools/capture.mjs` | Takes the README screenshots of the real widget and admin page (on the demo page) with Playwright into `docs/images/`. |
 

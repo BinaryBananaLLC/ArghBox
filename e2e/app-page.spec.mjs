@@ -58,7 +58,7 @@ test('URL parameters apply: theme, accent, lang, tone, view=add, type, from, pla
   expect(await loaderAttrs(page)).toEqual({ 'data-tab': 'off', 'data-page': '/settings/profile', 'data-theme': 'dark', 'data-accent': '#336699', 'data-lang': 'pl', 'data-tone': 'neutral' })
   const ab = page.locator('#arghbox-root .ab')
   await expect(ab).toHaveAttribute('data-dark', '')
-  expect(await ab.evaluate((n) => n.style.getPropertyValue('--accent'))).toBe('#336699')
+  expect(await ab.evaluate((n) => n.style.getPropertyValue('--arghbox-accent'))).toBe('#336699')
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('dark')
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(29, 28, 34)')
   await expect(page.locator('#arghbox-root .ctx')).toContainText('/settings/profile')

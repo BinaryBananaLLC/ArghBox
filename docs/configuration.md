@@ -20,11 +20,11 @@ A PHP file that returns an array. `arghbox/config.example.php` documents every k
 | `read_token_sha256` | `''` | Optional sha256 hex of a read-only token: admin GET actions, exports and MCP read tools. |
 | `trusted_ip_header` | `''` | Which header carries the visitor's IP. Empty uses the connection address. Use `'HTTP_CF_CONNECTING_IP'` behind Cloudflare and `'HTTP_X_REAL_IP'` behind Hostinger's CDN. The header is only believed when the connection itself comes from a trusted proxy: Cloudflare's published address ranges (built in) for `HTTP_CF_CONNECTING_IP`, or the addresses in `trusted_proxies`. `'HTTP_X_FORWARDED_FOR'` needs `trusted_proxies`; the right-most address that is not one of your proxies wins. IPv6 visitors are grouped by their /64 and IPv4-mapped addresses count as IPv4. |
 | `trusted_proxies` | `[]` | Addresses or CIDR ranges of your own proxies, for example `['203.0.113.7', '10.0.0.0/8']`. Overrides the built-in Cloudflare list for `HTTP_CF_CONNECTING_IP`. |
-| `allowed_origins` | `[]` | Extra origins that may call the public API from a browser (CORS), for example `['https://www.example.com']`. Your own origin always works. |
+| `allowed_origins` | `[]` | Extra origins that may call the public API from a browser (CORS), for example `['https://www.example.com']`. Your own origin always works. An origin ending in `:*`, such as `'http://localhost:*'`, allows that host on any port: meant for development (see [Test on your computer](install.md#test-on-your-computer)). |
 | `data_dir` | `null` | Absolute path for the database, outside the web root. `null` means automatic (see below). |
 | `moderation` | `'pending'` | `'pending'`: new entries wait for triage or your review. `'publish'`: they show at once. |
 | `auto_apply_min_confidence` | `80` | Triage verdicts below this confidence are stored as "flag" for you to decide. |
-| `credit` | `true` | Show the small "Powered by ArghBox" link in the dialog. |
+| `credit` | `true` | Show the small "Powered by ArghBox" link, with the ArghBox logo, in the dialog footer. It links to arghbox.com. |
 | `tags` | `[]` | Preset tags offered first to the triage AI and to you, for example `['map', 'export', 'mobile']`. |
 | `welcome` | `''` | A short plain-text note from you at the top of the dialog (up to 500 characters). |
 | `mcp_enabled` | `true` | Serve `mcp.php` (see [mcp.md](mcp.md)). |
@@ -85,7 +85,7 @@ All attributes are optional.
 | `data-label` | Tab text | "Feedback" (translated when the language is available) |
 | `data-lang` | Language code, for example `pl` | the page's `<html lang>`, else `en` |
 | `data-theme` | `auto` follows the visitor's light or dark setting, `light`, `dark`, or `host` follows your site (the `dark` class on `<html>` or `data-theme="dark"` on it) | `auto` |
-| `data-accent` | Any CSS colour, including `var(--your-variable)` | `#e8553d` |
+| `data-accent` | Any CSS colour, including `var(--your-variable)`. The same as `--arghbox-accent` below, and wins over it | `#e8553d` |
 | `data-tone` | `funny`, `neutral` | `funny` |
 | `data-tab` | `on`, `off`. With `off` there is no tab: open the box from your own button or link | `on` |
 | `data-tab-min-width` | Viewport width in px below which the edge tab is not shown, for example `600` when the tab would cover text on narrow phones and your header has its own Feedback button. `ArghBox.open()`, `#arghbox` links and `ArghBox.showTab()` still work, and it follows rotating a phone | `0` (always shown) |
@@ -98,9 +98,50 @@ All attributes are optional.
 
 ### Opening the box from your own page
 
-- A link or a visit to `#arghbox` opens the dialog. `#arghbox-add` opens the add form, `#arghbox-bug` starts a bug report, and `#arghbox-<id>` opens one entry (the Atom feed links use this).
-- From JavaScript: `ArghBox.open({ type: 'bug', view: 'add' })`, `ArghBox.close()`, `ArghBox.showTab()` and `ArghBox.hideTab()`.
-- Events on `window`: `arghbox:ready`, `arghbox:open`, `arghbox:close`, `arghbox:add`, `arghbox:vote` and `arghbox:dismiss`. They never carry visitor text.
+The tab is only one way in. Any page can open the same dialog from its own buttons, for example an icon in your header next to your other contact icons, or a "Share an idea" button on your About or Contact page.
+
+- A link or a visit to `#arghbox` opens the dialog. `#arghbox-add` opens the add form, `#arghbox-bug` starts a bug report, and `#arghbox-<id>` opens one entry (the Atom feed links use this). The widget removes the hash again, so the URL stays clean. Links need no JavaScript, work in Markdown (`[Share an idea](#arghbox-add)`) and still work when they are clicked before the widget has loaded. They must open in the same tab (no `target="_blank"`).
+- From JavaScript: `ArghBox.open({ type: 'bug', view: 'add' })`, `ArghBox.close()`, `ArghBox.showTab()` and `ArghBox.hideTab()`. Before the deferred script has run, `ArghBox` is not there yet, so links are the safer choice for content that shows at once.
+- Events on `window`: `arghbox:ready`, `arghbox:open`, `arghbox:close`, `arghbox:add`, `arghbox:vote`, `arghbox:dismiss` and `arghbox:tab`. They never carry visitor text.
+
+```html
+<!-- in the header: the ArghBox logo as an icon link -->
+<a href="#arghbox" aria-label="Feedback: share an idea or report a bug" title="Feedback">
+  <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path fill="#ffc83d" d="M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z"/>
+    <path fill="#e8553d" d="M3 13h26v8H3zM5 21v8h22v-8M10 17h12"/>
+  </svg>
+</a>
+
+<!-- on the About or Contact page -->
+<a class="button" href="#arghbox-add">Share an idea</a>
+<a class="button" href="#arghbox-bug">Report a bug</a>
+```
+
+The logo files are in [art/](../art/README.md). Using the logo to point at ArghBox is fine; see [TRADEMARKS.md](../TRADEMARKS.md).
+
+### Colours and fonts
+
+By default the widget wears ArghBox's own palette: the red accent, warm ink text, cream panels, and a dark theme in the brand's night colours. `data-accent` and `data-theme` cover most sites. To match your design further, set these CSS custom properties in your own stylesheet, on `:root` or on `#arghbox-root`. Custom properties cross the widget's Shadow DOM, nothing else does.
+
+| Property | What it colours | Default (light / dark) |
+|---|---|---|
+| `--arghbox-accent` | The tab, the main buttons, selected states and highlights. Darkened where needed so white text stays readable | `#e8553d` |
+| `--arghbox-bg` | Dialog background | `#fff` / `#1f1613` |
+| `--arghbox-fg` | Text | `#2b1d1a` / `#fff6e9` |
+| `--arghbox-muted` | Secondary text | `#6e5d56` / `#b8a8a0` |
+| `--arghbox-card` | Soft panels: the Ideas and Bugs switch, suggestions, comments | `#fff6e9` / `#2c211d` |
+| `--arghbox-border` | Borders of fields, chips and vote buttons | `#8f7c73` / `#8a7870` |
+| `--arghbox-line` | Dividers | `#eee3d6` / `#3b2d28` |
+| `--arghbox-font` | Font of the tab and the dialog | the system font |
+
+```css
+:root { --arghbox-accent: #2563eb; --arghbox-font: Inter, system-ui, sans-serif; }
+/* the colour properties apply to the theme that is showing, so set them per theme */
+html.dark { --arghbox-bg: #0f172a; --arghbox-card: #1e293b; }
+```
+
+Keep text readable: `--arghbox-fg` and `--arghbox-muted` need a contrast of at least 4.5:1 on `--arghbox-bg` and `--arghbox-card`, and `--arghbox-border` at least 3:1.
 
 ### Content Security Policy
 
@@ -116,7 +157,7 @@ ArghBox works under a strict CSP. These are the sources it needs. Replace `https
 Content-Security-Policy: script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'
 ```
 
-You do **not** need `style-src 'unsafe-inline'`. The only exception is Safari before 16.4, which cannot attach the widget's styles without it; newer browsers are fine.
+You do **not** need `style-src 'unsafe-inline'`: the widget attaches its styles as constructable stylesheets, which every supported browser has (Safari since 16.4).
 
 - **Nonces.** If your CSP uses `'nonce-...'`, put the nonce on the ArghBox script tag as usual. The loader passes it on to the scripts and styles it adds, so no extra source is needed.
 - **Trusted Types.** If you enforce them (`require-trusted-types-for 'script'`), add `trusted-types arghbox` to the policy. ArghBox creates one policy named `arghbox` for the script URLs it loads.

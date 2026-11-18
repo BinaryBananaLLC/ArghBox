@@ -11,6 +11,7 @@
 
   // Returns the widget's call(action, body) for the preview. api: the URL that did not answer; code: how it failed.
   window.__arghboxPreview = function (api, code) {
+    api = String(api).replace(/^https?:\/\//, ''); // shown as text: the dialog links only the docs
     var why = code === 'not_configured' ? 'the ArghBox at ' + api + ' has no config.php yet'
       : code === 'network' ? 'no ArghBox server answered at ' + api
       : 'the answer from ' + api + ' was not ArghBox (is PHP running there?)';

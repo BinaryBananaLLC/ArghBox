@@ -263,7 +263,7 @@ test('caching: the API is never cached, the feed for 10 minutes, and .htaccess c
   expect(feed.headers()['cache-control']).toMatch(/max-age=\d+/)
   // php -S (the dev router) serves static files with no-cache, so the Apache rules are checked in the file itself.
   const htaccess = fs.readFileSync(path.join(REPO, 'arghbox', '.htaccess'), 'utf8')
-  expect(htaccess).toContain('"^(arghbox|arghbox-app|app-page)\\.js$"')
+  expect(htaccess).toContain('"^(arghbox|arghbox-app|arghbox-preview|app-page)\\.js$"')
   expect(htaccess).toContain('"\\.json$"')
   expect(htaccess.match(/max-age=3600/g)).toHaveLength(2)
 })
@@ -282,9 +282,14 @@ test('the demo hash links open the right view: #arghbox-add the form, the bug li
   await page.goto(stack.siteUrl + '/#arghbox-add')
   await expect(panel(page).getByLabel('In a few words')).toBeVisible()
   await page.goto(stack.siteUrl + '/')
-  await page.getByRole('link', { name: 'Report a bug' }).click()
+  await page.getByRole('link', { name: 'Report a bug', exact: true }).click()
   await expect(panel(page).getByLabel('In a few words')).toBeVisible()
   await expect(panel(page).getByRole('radio', { name: /Bug/ })).toBeChecked()
+  expect(await page.evaluate(() => location.hash)).toBe('')
+  // the ArghBox icon in the header is an #arghbox link too
+  await page.keyboard.press('Escape')
+  await page.locator('#header-feedback').click()
+  await expect(card(page, 'Dark mode for the widget')).toBeVisible()
   expect(await page.evaluate(() => location.hash)).toBe('')
 })
 

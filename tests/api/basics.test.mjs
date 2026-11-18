@@ -133,6 +133,27 @@ describe('CORS', () => {
     assert.equal(o.status, 403);
   });
 
+  test('an allowed_origins entry ending in ":*" allows that scheme and host on any port, nothing else', async () => {
+    const dev = await startArghBox({ config: { allowed_origins: ['http://localhost:*', 'http://127.0.0.1:*'] } });
+    try {
+      for (const origin of ['http://localhost:5174', 'http://localhost:3000', 'http://localhost', 'http://127.0.0.1:5500']) {
+        const r = await dev.call('list', { headers: { Origin: origin } });
+        assert.equal(r.headers.get('access-control-allow-origin'), origin, origin);
+        const o = await dev.call('add', { method: 'OPTIONS', headers: { Origin: origin } });
+        assert.equal(o.status, 204, origin);
+      }
+      for (const origin of ['https://localhost:5174', 'http://localhost.evil.example', 'http://localhost:5174.evil.example', 'http://evil.localhost:5174', 'http://127.0.0.10:80']) {
+        const p = await dev.call('session', { body: { turnstile: 'x' }, headers: { Origin: origin } });
+        assert.equal(p.status, 403, origin);
+        assert.equal(p.json.error, 'origin_not_allowed', origin);
+        const g = await dev.call('list', { headers: { Origin: origin } });
+        assert.equal(g.headers.get('access-control-allow-origin'), null, origin);
+      }
+    } finally {
+      await dev.stop();
+    }
+  });
+
   test('same origin always works', async () => {
     const origin = new URL(box.url).origin;
     const r = await box.call('session', { body: { turnstile: 'good' }, headers: { Origin: origin }, ip: nextIp() });

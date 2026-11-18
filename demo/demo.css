@@ -47,6 +47,9 @@ header.top .wrap { display: flex; align-items: center; gap: 1rem; padding-top: .
 nav { margin-left: auto; display: flex; gap: 1.25rem; flex-wrap: wrap; }
 nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .95rem; }
 nav a:hover { color: var(--ink); }
+nav .fb-icon { display: inline-flex; align-items: center; }
+.fb-icon svg { stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) { .fb-icon svg { transition: transform .2s; } .fb-icon:hover svg { transform: rotate(-8deg) scale(1.08); } }
 
 .hero { padding: 3.5rem 0 2.5rem; display: grid; gap: 2rem; grid-template-columns: 1.1fr .9fr; align-items: center; }
 .hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.1; margin: 0 0 1rem; letter-spacing: -.02em; }

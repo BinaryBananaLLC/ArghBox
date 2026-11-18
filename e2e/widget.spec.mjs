@@ -49,7 +49,14 @@ test('tab renders on the right edge by default, on the left with data-position, 
   expect(Math.round(box.x + box.width)).toBe(vp.width)
   expect(Math.abs(box.y + box.height / 2 - vp.height / 2)).toBeLessThan(2)
   await expect(tab(page)).toHaveText('Feedback')
-  expect(await page.evaluate(() => { const b = document.querySelector('#arghbox-root').shadowRoot.querySelector('.t'); const c = getComputedStyle(b, '::before'); return c.content !== 'none' && parseFloat(c.width) >= 14 })).toBe(true) // the CSS tab icon
+  // the ArghBox mark on a cream badge above the label: burst in yellow, box in the accent
+  const icon = await page.evaluate(() => {
+    const svg = document.querySelector('#arghbox-root').shadowRoot.querySelector('.t svg')
+    const [burst, box] = svg.querySelectorAll('path')
+    const r = svg.getBoundingClientRect()
+    return { w: Math.round(r.width), h: Math.round(r.height), paths: svg.querySelectorAll('path').length, badge: getComputedStyle(svg).backgroundColor, burst: getComputedStyle(burst).fill, box: getComputedStyle(box).fill }
+  })
+  expect(icon).toEqual({ w: 34, h: 34, paths: 2, badge: 'rgb(255, 246, 233)', burst: 'rgb(255, 200, 61)', box: 'rgb(232, 85, 61)' })
 
   await load(page, servers, { 'data-position': 'left', 'data-offset': '30' })
   box = await page.locator('#arghbox-root .tw').boundingBox()
@@ -765,7 +772,12 @@ test('pass_expired: a new pass is fetched and the request retried once; pass_inv
   expect(api.requests('vote').length).toBe(4) // one try plus exactly one retry
 })
 
+// The test host runs on 127.0.0.1, where a box that does not answer switches the dialog to the local preview.
+// These tests are about the real errors, so they turn the preview off as a site can.
+const noPreview = (page) => page.addInitScript(() => { window.ArghBoxConfig = { localPreview: false } })
+
 test('server down, HTML error page, slow server, list failure with retry', async ({ page, servers, api }) => {
+  await noPreview(page)
   api.set({ down: true })
   await load(page, servers)
   await tab(page).click()
@@ -787,6 +799,52 @@ test('server down, HTML error page, slow server, list failure with retry', async
   await btn.click()
   await expect(panel(page).locator('.banner')).toHaveText(err('network'))
   await expect(btn).toHaveAttribute('aria-pressed', 'true') // rolled back to the previous state
+})
+
+test('local preview: on a local host with no box, sample entries, a note and working votes and adds; nothing kept', async ({ page, servers, api }) => {
+  const urls = []
+  page.on('request', (r) => urls.push(r.url()))
+  api.set({ down: true })
+  await load(page, servers)
+  await tab(page).click()
+  const wel = panel(page).locator('.wel')
+  await expect(wel).toContainText('Local preview: no ArghBox server answered at')
+  await expect(wel).toContainText('nothing is saved')
+  await expect(wel.getByRole('link')).toHaveAttribute('href', 'https://github.com/BinaryBananaLLC/ArghBox/blob/main/docs/install.md#test-on-your-computer')
+  await expect(card(page, 'Export my results as CSV')).toBeVisible()
+  await expect(panel(page).locator('.empty')).toHaveCount(0) // no error message
+  expect(urls.filter((u) => /arghbox-preview\.js\?v=0\.1\.0$/.test(u))).toHaveLength(1)
+
+  const btn = voteBtn(page, 'Export my results as CSV')
+  await btn.click()
+  await expect(btn).toHaveAttribute('aria-pressed', 'true')
+  await expect(btn).toHaveAttribute('aria-busy', 'false')
+  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByLabel('In a few words').fill('Preview entry from a test')
+  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Your argh is up.')
+  await panel(page).getByRole('button', { name: 'Back to the list' }).click()
+  await expect(card(page, 'Preview entry from a test')).toBeVisible()
+
+  expect(await page.evaluate(() => localStorage.getItem('arghbox:receipts'))).toBe(null) // no receipts to confuse a real box later
+  expect(urls.filter((u) => /challenges\.cloudflare\.com/.test(u))).toEqual([]) // no Turnstile in the preview
+  expect(api.requests('add')).toHaveLength(0)
+  expect(api.requests('vote')).toHaveLength(0)
+})
+
+test('local preview: an answer that is not ArghBox (an HTML page) says so; a JSON error from a real box does not switch', async ({ page, servers, api }) => {
+  api.set({ down: 'html' })
+  await load(page, servers)
+  await tab(page).click()
+  await expect(panel(page).locator('.wel')).toContainText('was not ArghBox (is PHP running there?)')
+  await expect(card(page, 'Export my results as CSV')).toBeVisible()
+
+  api.set({ down: false })
+  api.failNext('list', 'server_error')
+  await load(page, servers)
+  await tab(page).click()
+  await expect(panel(page).locator('.empty')).toContainText(err('server_error'))
+  await expect(card(page, 'Export my results as CSV')).toHaveCount(0)
 })
 
 test('Turnstile blocked: the list still works, voting and adding show a friendly message', async ({ page, servers }) => {
@@ -951,7 +1009,7 @@ test('hostile host CSS does not change the widget, and the widget does not chang
 test('data-theme: light, dark, auto (follows the color scheme live), host (follows html.dark and data-theme)', async ({ page, servers }) => {
   const bg = () => panel(page).evaluate((el) => getComputedStyle(el).backgroundColor)
   const LIGHT = 'rgb(255, 255, 255)'
-  const DARK = 'rgb(29, 28, 34)'
+  const DARK = 'rgb(31, 22, 19)' // the brand's night
   await page.emulateMedia({ colorScheme: 'dark' })
   await load(page, servers, { 'data-theme': 'light' })
   await openDialog(page)
@@ -1009,6 +1067,50 @@ test('a light accent is darkened on the tab and the buttons until white text has
     const pri = await rgb(await panel(page).locator('.pri').evaluate((el) => getComputedStyle(el).backgroundColor))
     expect(1.05 / (ratioWithWhite(pri) + 0.05), accent + ' button').toBeGreaterThanOrEqual(4.5)
   }
+})
+
+test('hosts restyle the tab and the dialog with --arghbox-* custom properties; data-accent still wins for the accent', async ({ page, servers }) => {
+  const rgb = (css) => page.evaluate((c) => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '#000'; x.fillStyle = c; x.fillRect(0, 0, 1, 1); return Array.from(x.getImageData(0, 0, 1, 1).data.slice(0, 3)) }, css)
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 2)
+  const mix = (c) => rgb('color-mix(in srgb, ' + c + ' 78%, #000)')
+  const tabStyle = () => page.locator('#arghbox-root .tw').evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, font: getComputedStyle(el).fontFamily }))
+  await page.goto(hostUrl(servers, 'plain'))
+  await page.addStyleTag({ content: ':root { --arghbox-accent: #2255cc; --arghbox-bg: #fdfdf0; --arghbox-fg: #102030; --arghbox-card: #e0f0ff; --arghbox-font: Georgia, serif }' })
+  await expect.poll(async () => near(await rgb((await tabStyle()).bg), await mix('#2255cc'))).toBe(true)
+  expect((await tabStyle()).font).toMatch(/Georgia/)
+  await openDialog(page)
+  const look = await panel(page).evaluate((p) => {
+    const h2 = p.querySelector('h2'), tabs = p.querySelector('.tabs')
+    return { bg: getComputedStyle(p).backgroundColor, fg: getComputedStyle(h2).color, font: getComputedStyle(h2).fontFamily, card: getComputedStyle(tabs).backgroundColor }
+  })
+  expect(look).toEqual({ bg: 'rgb(253, 253, 240)', fg: 'rgb(16, 32, 48)', font: 'Georgia, serif', card: 'rgb(224, 240, 255)' })
+  // data-accent on the script tag is more specific than a host-wide --arghbox-accent
+  await page.goto(hostUrl(servers, 'plain', { 'data-accent': '#118833' }))
+  await page.addStyleTag({ content: ':root { --arghbox-accent: #2255cc }' })
+  await expect.poll(async () => near(await rgb((await tabStyle()).bg), await mix('#118833'))).toBe(true)
+  // a host variable named plain --accent no longer leaks into the widget
+  await page.goto(hostUrl(servers, 'plain'))
+  const before = (await tabStyle()).bg
+  await page.addStyleTag({ content: ':root { --accent: #2255cc }' })
+  await page.evaluate(() => new Promise(requestAnimationFrame))
+  expect((await tabStyle()).bg).toBe(before)
+})
+
+test('copy: the list and the add form say what the box is for and that no account is needed, in both tones', async ({ page, servers }) => {
+  const sub = () => panel(page).locator('.sub')
+  await load(page, servers)
+  await openDialog(page)
+  await expect(sub()).toHaveText(EN['dialog.subtitle.funny'].replace('{site}', 'Demo Site'))
+  await expect(sub()).toContainText('No account needed')
+  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await expect(sub()).toHaveText(EN['add.subtitle.funny'])
+  await load(page, servers, { 'data-tone': 'neutral' })
+  await openDialog(page)
+  await expect(panel(page).locator('h2')).toHaveText('Send feedback')
+  await expect(sub()).toHaveText(EN['dialog.subtitle.neutral'].replace('{site}', 'Demo Site'))
+  await expect(sub()).toContainText('No account needed')
+  await panel(page).getByRole('button', { name: 'Add feedback' }).click()
+  await expect(sub()).toHaveText(EN['add.subtitle.neutral'])
 })
 
 // ---------------------------------------------------------------- variants
@@ -1077,7 +1179,8 @@ test('credit link: shown by default, hidden by data-credit=off and by the server
   await load(page, servers)
   await openDialog(page)
   const link = panel(page).getByRole('link', { name: 'Powered by ArghBox' })
-  await expect(link).toHaveAttribute('href', 'https://github.com/BinaryBananaLLC/ArghBox')
+  await expect(link).toHaveAttribute('href', 'https://arghbox.com/')
+  await expect(link.locator('svg.mk path')).toHaveCount(2) // the ArghBox mark next to the words
   await expect(link).toHaveAttribute('rel', 'noopener')
   await expect(link).toHaveAttribute('target', '_blank')
   await load(page, servers, { 'data-credit': 'off' })
@@ -1188,6 +1291,7 @@ test('a fast human is never silently dropped as a robot: the form waits out the 
 })
 
 test('a hung server ends in the "cannot reach" message with a working retry, not a spinner forever', async ({ page, servers, api }) => {
+  await noPreview(page)
   api.set({ slowMs: 120000 })
   await page.clock.install()
   await load(page, servers)
@@ -1544,7 +1648,8 @@ test('Trusted Types host: no innerHTML, script URLs go through the "arghbox" pol
   const errs = noErrors(page)
   await page.goto(hostUrl(servers, 'trusted-types'))
   await expect(tab(page)).toBeVisible()
-  expect(await page.evaluate(() => { const b = document.querySelector('#arghbox-root').shadowRoot.querySelector('.t'); const c = getComputedStyle(b, '::before'); return c.content !== 'none' && parseFloat(c.width) >= 14 })).toBe(true) // the CSS tab icon
+  // the tab icon is built with createElementNS (no innerHTML), so it renders under Trusted Types too
+  expect(await page.evaluate(() => document.querySelector('#arghbox-root').shadowRoot.querySelectorAll('.t svg path').length)).toBe(2)
   await tab(page).click()
   await expect(card(page, 'Dark mode')).toBeVisible()
   await expect(panel(page).locator('.vote .ic svg').first()).toBeVisible()
@@ -1905,7 +2010,7 @@ test('copy: "Posted on" for every kind, a kind thanks line, punctuated suggestio
   await expect(panel(page).locator('.sim h3')).toHaveText('Is it one of these? Vote for it instead.')
   await panel(page).getByLabel('In a few words').fill('A kindly thanked idea')
   await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('.thx p')).toHaveText('It shows up in the list once someone has had a look. Thanks for taking the time.')
+  await expect(panel(page).locator('.thx p')).toHaveText('It shows up in the list once someone has had a look. Thanks for helping us improve Demo Site!')
   await expect(panel(page)).not.toContainText('Spam')
 })
 

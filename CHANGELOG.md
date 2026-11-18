@@ -2,6 +2,23 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Local preview:** on `localhost`, `127.0.0.1` or `*.localhost`, when no ArghBox answers (no server, no PHP, no `config.php`), the dialog shows sample entries and a "Local preview" note instead of an error. Voting and adding work and save nothing, so a site can try its integration before it has a box. `window.ArghBoxConfig = { localPreview: false }` turns it off. See "Test on your computer" in `docs/install.md`.
+- **Styling:** hosts can restyle the tab and the dialog with CSS custom properties: `--arghbox-accent`, `--arghbox-bg`, `--arghbox-fg`, `--arghbox-muted`, `--arghbox-card`, `--arghbox-border`, `--arghbox-line` and `--arghbox-font` (`docs/configuration.md`).
+- **CORS:** an `allowed_origins` entry ending in `:*` (for example `'http://localhost:*'`) allows that host on any port. `tools/dev.mjs` uses it, so a site's dev server works with the local box whatever port it got.
+- **Docs:** how to open the box from your own header icon or About page button, with the logo snippet.
+
+### Changed
+
+- **Look:** the tab shows the ArghBox mark on a cream badge instead of the plain box icon, and the dialog uses the ArghBox palette (warm ink text, cream panels, a night-brown dark theme).
+- **Copy:** the list and the add form now say what the box is for and that no account is needed, and the thank-you screen thanks the visitor for helping improve the site.
+- **Credit:** "Powered by ArghBox" carries the logo and links to arghbox.com.
+- `data-accent` now sets `--arghbox-accent`. A host's own `--accent` variable no longer leaks into the widget.
+- The dialog script's size budget is 21 KB gzipped (was 20 KB). The loader stays under 4 KB.
+
 ## [0.1.0] - 2026-11-17
 
 The first public version.

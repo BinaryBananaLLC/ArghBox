@@ -176,6 +176,15 @@ Change the `?v=` number when you upgrade, so visitors' browsers fetch the new fi
 
 Try it: open the tab, add a test idea. It lands in the admin page under **Pending**.
 
+### Test on your computer
+
+**Without a server: the local preview.** Add the script tag and open your site from your own dev server (`localhost`, `127.0.0.1` or a `*.localhost` name, any port). If no ArghBox answers there, because there is no PHP, no `config.php` or no server at `data-api`, the dialog opens anyway. It shows sample entries and a "Local preview" note that says what did not answer, and voting and adding work but save nothing. That is enough to check where the tab sits, your colours, and your own buttons and `#arghbox` links. Production sites never see it, and `window.ArghBoxConfig = { localPreview: false }` (set before the script tag) turns it off on your machine too.
+
+**With a real box.** You need PHP 8.1 or newer with SQLite (`pdo_sqlite`).
+
+- In a clone of the ArghBox repository, `node tools/dev.mjs --port 8787 --seed` runs a box with sample entries and a fake Turnstile check. It accepts calls from `http://localhost` and `http://127.0.0.1` on any port, so point your page at it in development only: `data-api="http://localhost:8787/arghbox/api.php"`. `node tools/dev.mjs --help` lists the options.
+- Or run your own copy: a `config.php` with Cloudflare's test keys (above), a `secret` from `npx arghbox secrets`, and `'allowed_origins' => ['http://localhost:*']` when your page runs on another port than PHP. An origin ending in `:*` allows that host on any port, which is meant for development. Then start `php -S localhost:8787` in the folder that holds `arghbox/`.
+
 ## 7. If your site is behind a CDN or a cache
 
 If your domain uses Cloudflare's proxy (the orange cloud), Hostinger's CDN or any page-cache plugin, two things matter.
