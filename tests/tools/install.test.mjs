@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { install, isExcluded } from '../../tools/install.mjs'
+import { install, isExcluded, detectPublicDir } from '../../tools/install.mjs'
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'arghbox-install-'))
@@ -241,5 +241,119 @@ test('a --public folder that does not exist yet is created, with a note in case 
     fs.mkdirSync(path.join(target, 'public'))
     const ok = install({ target, publicDir: 'public' })
     assert.ok(!ok.warnings.some((w) => /did not exist/.test(w)), 'no note when the folder is there')
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+// ---- no-flag install: web root detection, the skill by default, the Codex copy ----
+
+const cli = (args, cwd) => spawnSync(process.execPath, [path.join(REPO, 'bin', 'arghbox.mjs'), ...args], { encoding: 'utf8', cwd })
+const skillFile = (target, where) => path.join(target, where, 'skills', 'arghbox-triage', 'SKILL.md')
+
+test('detectPublicDir: an existing install wins over an earlier candidate', () => {
+  const target = tmp()
+  try {
+    fs.mkdirSync(path.join(target, 'public'))
+    fs.mkdirSync(path.join(target, 'www', 'arghbox'), { recursive: true })
+    fs.writeFileSync(path.join(target, 'www', 'arghbox', 'VERSION'), '0.0.1\n')
+    assert.equal(detectPublicDir(target).dir, 'www')
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('detectPublicDir: public comes before public_html, then static, www, htdocs', () => {
+  const target = tmp()
+  try {
+    fs.mkdirSync(path.join(target, 'htdocs'))
+    assert.equal(detectPublicDir(target).dir, 'htdocs')
+    fs.mkdirSync(path.join(target, 'public_html'))
+    assert.equal(detectPublicDir(target).dir, 'public_html')
+    fs.mkdirSync(path.join(target, 'public'))
+    const r = detectPublicDir(target)
+    assert.equal(r.dir, 'public')
+    assert.ok(r.reason)
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('detectPublicDir: index.html or index.php in the target gives ".", nothing gives null', () => {
+  const target = tmp()
+  try {
+    assert.equal(detectPublicDir(target), null)
+    fs.writeFileSync(path.join(target, 'index.php'), '<?php')
+    assert.equal(detectPublicDir(target).dir, '.')
+    fs.rmSync(path.join(target, 'index.php'))
+    fs.writeFileSync(path.join(target, 'index.html'), '<html>')
+    assert.equal(detectPublicDir(target).dir, '.')
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('CLI: no web root found exits 2 and says to use --public', () => {
+  const target = tmp()
+  try {
+    const r = cli(['install', '--target', target])
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /Could not find the web root/)
+    assert.match(r.stderr, /--public <folder>/)
+    assert.deepEqual(fs.readdirSync(target), [])
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('CLI: no flags installs the server folder and both skill copies, and says which folder it picked', () => {
+  const target = tmp()
+  try {
+    fs.mkdirSync(path.join(target, 'public_html'))
+    const r = cli(['install'], target)
+    assert.equal(r.status, 0, r.stderr)
+    assert.ok(fs.existsSync(path.join(target, 'public_html', 'arghbox', 'api.php')))
+    assert.ok(fs.existsSync(skillFile(target, '.claude')))
+    assert.ok(fs.existsSync(skillFile(target, '.agents')))
+    assert.match(r.stdout, /Using public_html\/ as the web root/)
+    assert.match(r.stdout, /--public/)
+    assert.match(r.stdout, /\.agents\/skills\/arghbox-triage\//)
+    assert.match(r.stdout, /Claude Code or Codex/)
+    assert.match(r.stdout, /approve network access/)
+    const q = cli(['install', '--quiet'], target)
+    assert.equal(q.status, 0, q.stderr)
+    assert.match(q.stdout, /web root public_html\/, 0 new, 0 updated/)
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('CLI: --no-skill installs neither skill copy, and --skill is still accepted', () => {
+  const target = tmp()
+  try {
+    fs.mkdirSync(path.join(target, 'public'))
+    const r = cli(['install', '--no-skill', '--target', target])
+    assert.equal(r.status, 0, r.stderr)
+    assert.ok(fs.existsSync(path.join(target, 'public', 'arghbox', 'api.php')))
+    assert.ok(!fs.existsSync(path.join(target, '.claude')))
+    assert.ok(!fs.existsSync(path.join(target, '.agents')))
+    const old = cli(['install', '--public', 'public', '--skill', '--quiet', '--target', target])
+    assert.equal(old.status, 0, old.stderr)
+    assert.ok(fs.existsSync(skillFile(target, '.claude')))
+    assert.ok(fs.existsSync(skillFile(target, '.agents')))
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('install() with skill:true still writes only the .claude copy; agentsSkill adds the Codex copy', () => {
+  const target = tmp()
+  try {
+    install({ target, publicDir: 'public', skill: true })
+    assert.ok(fs.existsSync(skillFile(target, '.claude')))
+    assert.ok(!fs.existsSync(path.join(target, '.agents')))
+    install({ target, publicDir: 'public', skill: true, agentsSkill: true })
+    assert.ok(fs.existsSync(skillFile(target, '.agents')))
+  } finally { fs.rmSync(target, { recursive: true, force: true }) }
+})
+
+test('CLI: --skill-only creates both skill copies, and the Codex copy is also saved as .bak on change', () => {
+  const target = tmp()
+  try {
+    const r = cli(['install', '--skill-only', '--target', target])
+    assert.equal(r.status, 0, r.stderr)
+    assert.ok(fs.existsSync(skillFile(target, '.claude')))
+    assert.ok(fs.existsSync(skillFile(target, '.agents')))
+    assert.ok(!fs.existsSync(path.join(target, 'arghbox')))
+    const rules = path.join(target, '.agents', 'skills', 'arghbox-triage', 'RULES.md')
+    fs.writeFileSync(rules, 'mine')
+    cli(['install', '--skill-only', '--target', target])
+    assert.equal(fs.readFileSync(rules + '.bak', 'utf8'), 'mine')
   } finally { fs.rmSync(target, { recursive: true, force: true }) }
 })

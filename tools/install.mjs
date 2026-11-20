@@ -1,18 +1,25 @@
 #!/usr/bin/env node
-// Copies the arghbox/ folder (and optionally the triage skill) into a site repository.
+// Copies the arghbox/ folder and the triage skill into a site repository.
 //
-//   node tools/install.mjs --target <site repo> --public <public dir> [--skill] [--dry-run]
+//   node tools/install.mjs --target <site repo> [--public <public dir>] [--no-skill] [--dry-run]
 //   node tools/install.mjs --target <site repo> --skill-only
 //
 //   --target   the site repository (must exist)
-//   --public   the folder that is served as the web root, relative to --target (e.g. public_html, public, www, .)
+//   --public   the folder that is served as the web root, relative to --target. Optional: without it the tool
+//              finds the folder itself (an existing install, else public, public_html, static, www, htdocs, else . when
+//              the target has an index.html or index.php) and says which one it picked.
 //   --skill-only  copy only the triage skill (when you upload the arghbox/ folder yourself); --public is not needed
-//   --skill    also copy skill/arghbox-triage/ to <target>/.claude/skills/arghbox-triage/
+//   --no-skill skip the triage skill. It is installed by default, to <target>/.claude/skills/arghbox-triage/
+//              (Claude Code) and <target>/.agents/skills/arghbox-triage/ (Codex).
+//   --skill    accepted and ignored (the skill is the default now), so older build scripts keep working
 //   --dry-run  print what would happen and change nothing
 //   --quiet    print one summary line and the notes only (for build scripts that run it every time)
 //
-// From the npm package the same tool is `npx arghbox install [--public <dir>] [--skill] ...`, with --target
+// From the npm package the same tool is `npx arghbox install [--public <dir>] [--no-skill] ...`, with --target
 // defaulting to the current folder.
+//
+// The programmatic install() keeps its old contract: it needs an explicit publicDir, and skill:true writes only the
+// .claude copy unless agentsSkill:true is passed too (the CLI does).
 //
 // Safe to run again to upgrade: code files are replaced, but config.php, any *.sqlite file and everything in
 // data/ except its .htaccess and index.html are never touched. A changed skill file is saved as <name>.bak first.
@@ -106,7 +113,7 @@ function symlinkOnPath(root, file) {
  * Each action is { kind: 'create' | 'update' | 'same' | 'keep' | 'skip', file } with `file` relative to the target.
  * An update of a skill file saves the old file as <name>.bak first (action.backup is set).
  */
-export function install({ target, publicDir, skill = false, skillOnly = false, dryRun = false, sourceRoot = REPO }) {
+export function install({ target, publicDir, skill = false, skillOnly = false, dryRun = false, sourceRoot = REPO, agentsSkill = false }) {
   if (!target) throw new Error('--target is required');
   if (skillOnly) skill = true;
   if (!skillOnly && (publicDir === undefined || publicDir === null || publicDir === '')) throw new Error('--public is required (use . when the site root is the repository root)');
@@ -174,6 +181,7 @@ export function install({ target, publicDir, skill = false, skillOnly = false, d
     const srcSkill = path.join(sourceRoot, 'skill', 'arghbox-triage');
     if (!fs.existsSync(srcSkill)) throw new Error(`Skill folder not found: ${srcSkill}`);
     copyTree(srcSkill, path.join(targetAbs, '.claude', 'skills', 'arghbox-triage'), null, { backup: true });
+    if (agentsSkill) copyTree(srcSkill, path.join(targetAbs, '.agents', 'skills', 'arghbox-triage'), null, { backup: true });
   }
 
   const pub = rel.split(path.sep).join('/');
@@ -196,8 +204,30 @@ export function install({ target, publicDir, skill = false, skillOnly = false, d
   return { actions, gitignore, warnings, dryRun, version: newVersion, publicPrefix: prefix };
 }
 
+/** Folders that hosts and site generators commonly serve, in the order they are tried. */
+export const PUBLIC_CANDIDATES = ['public', 'public_html', 'static', 'www', 'htdocs'];
+
+/**
+ * Finds the web root inside target when --public was not given. Returns { dir, reason } (dir is relative, '.' for the
+ * target itself) or null. An existing install wins, so an upgrade lands where the files already are.
+ */
+export function detectPublicDir(target) {
+  const abs = path.resolve(target);
+  const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+  for (const c of PUBLIC_CANDIDATES) {
+    if (fs.existsSync(path.join(abs, c, 'arghbox', 'VERSION'))) return { dir: c, reason: 'it already has an ArghBox install' };
+  }
+  for (const c of PUBLIC_CANDIDATES) {
+    if (isDir(path.join(abs, c))) return { dir: c, reason: 'it is the first web root folder found' };
+  }
+  if (fs.existsSync(path.join(abs, 'index.html')) || fs.existsSync(path.join(abs, 'index.php'))) {
+    return { dir: '.', reason: 'this folder has an index.html or index.php' };
+  }
+  return null;
+}
+
 function parseArgs(argv) {
-  const o = { target: null, publicDir: null, skill: false, skillOnly: false, dryRun: false, quiet: false };
+  const o = { target: null, publicDir: null, skill: true, noSkill: false, skillOnly: false, dryRun: false, quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const value = () => {
@@ -208,6 +238,7 @@ function parseArgs(argv) {
     if (a === '--target') o.target = value();
     else if (a === '--public') o.publicDir = value();
     else if (a === '--skill') o.skill = true;
+    else if (a === '--no-skill') o.noSkill = true;
     else if (a === '--skill-only') o.skillOnly = true;
     else if (a === '--dry-run') o.dryRun = true;
     else if (a === '--quiet') o.quiet = true;
@@ -220,7 +251,7 @@ function parseArgs(argv) {
 /** The usage text; `command` is how the tool was started, and `targetOptional` is true for the npm CLI. */
 export function usage(command = 'node tools/install.mjs', targetOptional = false) {
   const t = targetOptional ? '[--target <site repo>]' : '--target <site repo>';
-  return `Usage: ${command} ${t} --public <public dir> [--skill] [--dry-run] [--quiet]\n   or: ${command} ${t} --skill-only [--dry-run] [--quiet]`;
+  return `Usage: ${command} ${t} [--public <public dir>] [--no-skill] [--dry-run] [--quiet]\n   or: ${command} ${t} --skill-only [--dry-run] [--quiet]`;
 }
 
 /**
@@ -237,7 +268,19 @@ export function main(argv = process.argv.slice(2), { command = 'node tools/insta
       return 0;
     }
     if (!o.target && defaultTarget !== null) o.target = defaultTarget;
-    const r = install({ ...o, sourceRoot });
+    if (o.noSkill && o.skillOnly) throw new Error('--no-skill and --skill-only cannot be used together');
+    if (o.noSkill) o.skill = false;
+    let picked = null;
+    if (!o.skillOnly && (o.publicDir === null || o.publicDir === '')) {
+      if (!o.target) throw new Error('--target is required');
+      const t = path.resolve(o.target);
+      if (!fs.existsSync(t) || !fs.statSync(t).isDirectory()) throw new Error(`Target folder not found: ${t}`);
+      picked = detectPublicDir(t);
+      if (!picked) throw new Error('Could not find the web root in this folder (no public, public_html, static, www or htdocs folder, and no index.html or index.php). Run again with --public <folder>: the folder your host serves, or . for this folder.');
+      o.publicDir = picked.dir;
+    }
+    const r = install({ ...o, agentsSkill: true, sourceRoot });
+    const shownPick = picked ? (picked.dir === '.' ? '. (this folder)' : `${picked.dir}/`) : null;
     const counts = {};
     for (const a of r.actions) {
       counts[a.kind] = (counts[a.kind] || 0) + 1;
@@ -245,19 +288,20 @@ export function main(argv = process.argv.slice(2), { command = 'node tools/insta
     }
     const summary = `${counts.create || 0} new, ${counts.update || 0} updated, ${counts.same || 0} unchanged${counts.keep ? `, ${counts.keep} kept (your config and data)` : ''}${counts.skip ? `, ${counts.skip} skipped (symbolic links)` : ''}`;
     if (o.quiet) {
-      console.log(`ArghBox${r.version ? ` ${r.version}` : ''}: ${r.dryRun ? 'dry run, ' : ''}${summary}.`);
+      console.log(`ArghBox${r.version ? ` ${r.version}` : ''}: ${r.dryRun ? 'dry run, ' : ''}${picked ? `web root ${shownPick}, ` : ''}${summary}.`);
     } else {
+      if (picked) console.log(`\nUsing ${shownPick} as the web root (${picked.reason}). Pass --public <folder> to use another.`);
       console.log(`\n${r.dryRun ? 'Dry run, nothing was changed. ' : ''}${summary}. Your config.php and data are never touched.`);
       console.log('\nAdd these lines to the .gitignore of your site repository:\n');
       console.log(r.gitignore.join('\n'));
       if (!o.skillOnly) {
         const pub = r.publicPrefix;
-        console.log(`\n(If a build script runs this for you on every build, as the README shows, git-ignore the copies instead: ${pub}arghbox/${o.skill ? ' and .claude/skills/arghbox-triage/' : ''}, plus .arghbox/.)`);
+        console.log(`\n(If a build script runs this for you on every build, as the README shows, git-ignore the copies instead: ${pub}arghbox/${o.skill ? ', .claude/skills/arghbox-triage/ and .agents/skills/arghbox-triage/' : ''}, plus .arghbox/.)`);
       }
     }
     for (const w of r.warnings) console.log(`${o.quiet ? '' : '\n'}Note: ${w}`);
     if (!o.quiet && (o.skill || o.skillOnly)) {
-      console.log('\nNext, for the triage skill: in the repository root create .arghbox/site.json ({"url": "https://example.com/arghbox/"}) and .arghbox/token (your triage token), then ask Claude Code to "Empty the ArghBox". See https://github.com/BinaryBananaLLC/ArghBox/blob/main/docs/triage.md.');
+      console.log('\nNext, for the triage skill: in the repository root create .arghbox/site.json ({"url": "https://example.com/arghbox/"}) and .arghbox/token (your triage token), then ask Claude Code or Codex to "Empty the ArghBox". Codex runs commands in a sandbox and the triage script reaches your site over HTTPS, so approve network access when Codex asks. See https://github.com/BinaryBananaLLC/ArghBox/blob/main/docs/triage.md.');
     }
     return 0;
   } catch (e) {

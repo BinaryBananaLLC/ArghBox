@@ -1,6 +1,6 @@
 # Contributing to ArghBox
 
-Thanks for helping. Report bugs as [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose). Send ideas and questions with the Feedback tab on [arghbox.com](https://arghbox.com/), where ArghBox collects its own feedback. Code, docs fixes and translations come here as pull requests. For anything bigger than a small fix, please post the idea on the board first so we can agree on the approach before you spend your time. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Thanks for helping. Report bugs, ideas and questions as [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose), or with the Feedback tab on [ArghBox.com](https://arghbox.com/#arghbox), where ArghBox collects its own feedback and people vote. Code, docs fixes and translations come here as pull requests. For anything bigger than a small fix, please post the idea on the board first so we can agree on the approach before you spend your time. Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Setup
 
@@ -20,6 +20,7 @@ On Windows, a PHP from Scoop often ships these extensions without enabling them.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Starts the demo site, the real backend and a fake Turnstile on http://localhost:8787, seeded with demo data. The admin page is at `/arghbox/admin/`; the owner token is printed. |
+| `npm run demo` | Builds the GitHub Pages demo into `dist/pages/` and serves it on http://127.0.0.1:8790/ArghBox/. No PHP: `demo/backend.js` answers the API in the browser. Admin password: `demo`. |
 | `npm test` | Unit tests (`node --test`): PHP through the API, the triage script, the tools and the widget helpers. Works offline. |
 | `npm run test:e2e` | Playwright tests: the widget in Chromium (desktop and phone), Firefox and WebKit (iPhone), the admin page in Chromium. Turnstile is replaced by a stub. |
 | `npm run check:size` | Fails when the loader exceeds 4 KB or the app exceeds 20 KB gzipped. |
@@ -66,7 +67,7 @@ Copy `arghbox/i18n/en.json` to `arghbox/i18n/<code>.json`, translate the values,
 
 ## Releasing (maintainers)
 
-Releases come only from the **Release** workflow (`.github/workflows/release.yml`), never from a laptop or the Releases page. It is the repository's only workflow: there is no CI, and the release does not run the tests, so run them on your computer first.
+Releases come only from the **Release** workflow (`.github/workflows/release.yml`), never from a laptop or the Releases page. There is no CI, and the release does not run the tests, so run them on your computer first. The only other workflow, **Demo** (`.github/workflows/demo.yml`), runs after each successful release and publishes the demo to GitHub Pages; you can also run it by hand.
 
 1. Write the release notes as you go, under `## [Unreleased]` in `CHANGELOG.md`.
 2. Run `npm run test:all` and push to `main`.

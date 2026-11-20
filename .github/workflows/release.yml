@@ -4,8 +4,9 @@ name: Release
 # and the npm tarball (each with a build provenance attestation), then the `arghbox` package on npmjs.com with
 # npm provenance.
 #
-# NO TEST AUTOMATION (owner decision 2026-11-17): this is the only workflow in the repository, it never runs on
-# push or pull request, and it runs no tests. Never add CI, test steps or scheduled workflows.
+# NO TEST AUTOMATION (owner decision 2026-11-17): this and demo.yml (which publishes the GitHub Pages demo after
+# a release) are the only workflows in the repository. They never run on push or pull request, and they run no
+# tests. Never add CI, test steps or scheduled workflows.
 #
 # HOW TO RELEASE (all in the browser)
 #   Actions -> Release -> Run workflow -> type the new tag, e.g. v0.1.1 -> Run.
@@ -179,7 +180,7 @@ jobs:
             on && /^## \[/ { exit }
             on { print }
           ' CHANGELOG.md > notes.md
-          printf '\n---\n\nInstall with `npm install --save-dev arghbox@%s` and `npx arghbox install --public <your web root> --skill`, or download `arghbox-%s.zip` below and upload its `arghbox` folder. Every file has a build provenance attestation: `gh attestation verify <file> --repo %s`.\n' "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" >> notes.md
+          printf '\n---\n\nInstall with `npm install --save-dev arghbox@%s` and `npx arghbox install`, or download `arghbox-%s.zip` below and upload its `arghbox` folder. Every file has a build provenance attestation: `gh attestation verify <file> --repo %s`.\n' "$VERSION" "$VERSION" "$GITHUB_REPOSITORY" >> notes.md
           if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
             gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$SHA" >/dev/null
           fi

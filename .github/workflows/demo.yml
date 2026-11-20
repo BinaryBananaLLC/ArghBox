@@ -1,0 +1,54 @@
+name: Demo
+
+# Publishes the live demo to GitHub Pages: https://binarybananallc.github.io/ArghBox/
+# It is demo/ (Contoso Tasks, a made-up site) with the real widget, admin page and mobile app page. Pages runs no
+# PHP, so tools/build-pages.mjs adds demo/backend.js, which answers api.php in the visitor's browser.
+#
+# WHEN: after every successful Release run, so the demo shows the version on npm, or by hand:
+#   Actions -> Demo -> Run workflow.
+# Never on push or pull request, and no tests here: run `npm run test:all` on your machine.
+#
+# ONE-TIME SETUP: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#
+# MONEY GUARD: the job runs only while the repository is public, where GitHub-hosted runners are free. Linux only,
+# short timeout. Never remove the `if:` line.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer run waits for the older one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and publish the demo
+    if: ${{ !github.event.repository.private && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # After a release this is the default branch's newest commit: the release's version commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Build the demo
+        run: node tools/build-pages.mjs
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist/pages
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

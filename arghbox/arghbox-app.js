@@ -25,7 +25,7 @@
     '.hd.bk{padding-left:8px}' +
     '.hdt{flex:1;min-width:0;padding-top:6px}' +
     'h2{margin:0;font:700 20px/1.25 ' + FONT + ';overflow-wrap:anywhere}' +
-    'h2:focus{outline:0}' +
+    '.panel h2:focus{outline:0}' + // beats .panel :focus-visible: a heading takes focus for screen readers, no ring
     'h3{margin:18px 0 6px;font:700 12px/1.3 ' + FONT + ';text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}' +
     '.sub{margin:2px 0 0;color:var(--mut)}' +
     '.ib{display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:44px;height:44px;padding:0 10px;border-radius:12px;color:var(--fg)}' +

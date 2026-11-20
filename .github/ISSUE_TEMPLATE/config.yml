@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Suggest an idea or ask a question
+  - name: Post on the ArghBox.com feedback board
     url: "https://arghbox.com/#arghbox-add"
-    about: Ideas and questions go to the Feedback tab on arghbox.com, where ArghBox collects its own feedback. Search the board and vote if your idea is already there, or add a new one.
+    about: Bugs, ideas and questions are welcome on the Feedback tab on ArghBox.com too, where ArghBox collects its own feedback and people vote. Search the board first and vote if it is already there.
   - name: Security problem
     url: https://github.com/BinaryBananaLLC/ArghBox/security/advisories/new
-    about: Please report vulnerabilities privately, not on the public board.
+    about: Please report vulnerabilities privately, not in a public issue or on the board.

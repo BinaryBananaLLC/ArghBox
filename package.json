@@ -65,6 +65,8 @@
   },
   "scripts": {
     "dev": "node tools/dev.mjs --seed",
+    "demo": "node tools/build-pages.mjs --serve",
+    "build:pages": "node tools/build-pages.mjs",
     "test": "node --test \"tests/**/*.test.mjs\"",
     "test:e2e": "playwright test",
     "test:all": "npm test && npm run check:size && npm run test:e2e",

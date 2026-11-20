@@ -101,16 +101,16 @@ test('npm install of the packed tarball gives a working `arghbox` command and AP
     assert.equal(v.stdout.trim(), PKG.version)
 
     // First install into the site, then a second run that only checks (the way a prebuild script runs it).
-    const first = npm('exec --offline -- arghbox install --public public --skill --quiet', site)
+    const first = npm('exec --offline -- arghbox install --quiet', site)
     assert.equal(first.status, 0, first.stderr)
-    assert.match(first.stdout, new RegExp(`ArghBox ${PKG.version.replace(/\./g, '\\.')}: \\d+ new, 0 updated`))
-    for (const f of ['public/arghbox/arghbox.js', 'public/arghbox/.htaccess', 'public/arghbox/lib/.htaccess', 'public/arghbox/data/.htaccess', '.claude/skills/arghbox-triage/SKILL.md']) {
+    assert.match(first.stdout, new RegExp(`ArghBox ${PKG.version.replace(/\./g, '\\.')}: web root public/, \\d+ new, 0 updated`))
+    for (const f of ['public/arghbox/arghbox.js', 'public/arghbox/.htaccess', 'public/arghbox/lib/.htaccess', 'public/arghbox/data/.htaccess', '.claude/skills/arghbox-triage/SKILL.md', '.agents/skills/arghbox-triage/SKILL.md']) {
       assert.ok(fs.existsSync(path.join(site, f)), f)
     }
     fs.writeFileSync(path.join(site, 'public', 'arghbox', 'config.php'), '<?php return [];')
-    const again = npm('exec --offline -- arghbox install --public public --skill --quiet', site)
+    const again = npm('exec --offline -- arghbox install --quiet', site)
     assert.equal(again.status, 0, again.stderr)
-    assert.match(again.stdout, /: 0 new, 0 updated, \d+ unchanged/)
+    assert.match(again.stdout, /, 0 new, 0 updated, \d+ unchanged/)
     assert.equal(again.stdout.trim().split(/\r?\n/).length, 1, 'quiet mode prints one line when there is nothing to note')
     assert.equal(fs.readFileSync(path.join(site, 'public', 'arghbox', 'config.php'), 'utf8'), '<?php return [];')
 
@@ -143,7 +143,7 @@ test('arghbox help, version and unknown commands', () => {
   assert.equal(run('version').stdout.trim(), PKG.version)
   const badInstall = run('install', '--bogus')
   assert.equal(badInstall.status, 2)
-  assert.match(badInstall.stderr, /Usage: arghbox install \[--target <site repo>\] --public/)
+  assert.match(badInstall.stderr, /Usage: arghbox install \[--target <site repo>\] \[--public <public dir>\] \[--no-skill\]/)
   const missing = run('install', '--public')
   assert.equal(missing.status, 2)
   assert.match(missing.stderr, /--public needs a value/)

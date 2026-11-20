@@ -24,7 +24,7 @@ A PHP file that returns an array. `arghbox/config.example.php` documents every k
 | `data_dir` | `null` | Absolute path for the database, outside the web root. `null` means automatic (see below). |
 | `moderation` | `'pending'` | `'pending'`: new entries wait for triage or your review. `'publish'`: they show at once. |
 | `auto_apply_min_confidence` | `80` | Triage verdicts below this confidence are stored as "flag" for you to decide. |
-| `credit` | `true` | Show the small "Powered by ArghBox" link, with the ArghBox logo, in the dialog footer. It links to arghbox.com. |
+| `credit` | `true` | Show the small "Powered by ArghBox" link, with the ArghBox logo, in the dialog footer. It links to ArghBox.com. |
 | `tags` | `[]` | Preset tags offered first to the triage AI and to you, for example `['map', 'export', 'mobile']`. |
 | `welcome` | `''` | A short plain-text note from you at the top of the dialog (up to 500 characters). |
 | `mcp_enabled` | `true` | Serve `mcp.php` (see [mcp.md](mcp.md)). |

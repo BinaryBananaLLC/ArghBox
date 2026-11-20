@@ -9,7 +9,7 @@ You need:
 - A free Cloudflare account, for Turnstile.
 - Node.js 22 or newer on your own computer, for the helper tools and the triage skill. (No Node on the server.) ArghBox is on npm as [`arghbox`](https://www.npmjs.com/package/arghbox): the package holds the `arghbox/` server folder, the triage skill and an `arghbox` command that installs both.
 
-Want to see it first? Try the live demo on [arghbox.com](https://arghbox.com): click the Feedback tab. Or run `npm install` and `npm run dev` in this repository. It starts a demo site with a seeded box on your machine.
+Want to see it first? Try the [live demo](https://binarybananallc.github.io/ArghBox/): a made-up site with the Feedback tab, the admin page (password `demo`) and the board inside a phone app. Or run `npm install` and `npm run dev` in this repository. It starts the same demo site with a real, seeded box on your machine.
 
 ## 1. Create a Turnstile widget
 
@@ -86,21 +86,21 @@ When something goes wrong, ArghBox writes a line to `error.log` in the same fold
 
 ```
 npm install --save-dev arghbox
-npx arghbox install --public <public dir> --skill
+npx arghbox install
 ```
 
-`<public dir>` is the folder your site serves as its web root, relative to the repository: `public_html`, `public`, `src/public` (VitePress), `static` or `.` when the repository root is the web root. The command copies the `arghbox/` folder there and the triage skill to `.claude/skills/arghbox-triage/`, never overwrites `config.php` or `data/`, and prints the `.gitignore` lines to add. Add `--dry-run` to see what it would do first, or `--skill-only` when you upload the folder yourself and only want the skill. Then deploy your site the way you always do: the `arghbox/` folder goes along.
+The command finds your web root itself (an existing install, else `public`, `public_html`, `static`, `www` or `htdocs`, else `.` when the folder has an `index.html` or `index.php`) and says which one it picked. If your site serves another folder, such as `src/public` (VitePress), add `--public <public dir>`: the folder your site serves, relative to the repository, or `.` when the repository root is the web root. The command copies the `arghbox/` folder there and the triage skill to `.claude/skills/arghbox-triage/` (Claude Code) and `.agents/skills/arghbox-triage/` (Codex), never overwrites `config.php` or `data/`, and prints the `.gitignore` lines to add. Add `--dry-run` to see what it would do first, or `--skill-only` when you upload the folder yourself and only want the skill. Then deploy your site the way you always do: the `arghbox/` folder goes along.
 
 **Let the build keep it in sync.** If your site has a build step, run the install from it, so the copy always matches the version in `package.json` and you never commit it:
 
 ```json
 "scripts": {
-  "predev": "arghbox install --public public --skill --quiet",
-  "prebuild": "arghbox install --public public --skill --quiet"
+  "predev": "arghbox install --quiet",
+  "prebuild": "arghbox install --quiet"
 }
 ```
 
-npm runs `predev` and `prebuild` before `npm run dev` and `npm run build`. `--quiet` prints one line. Git-ignore the copies: `public/arghbox/`, `.claude/skills/arghbox-triage/` and `.arghbox/`. A `config.php` you keep inside `public/arghbox/` stays where it is, and stays ignored with the folder.
+npm runs `predev` and `prebuild` before `npm run dev` and `npm run build`. `--quiet` prints one line. Git-ignore the copies: `public/arghbox/`, `.claude/skills/arghbox-triage/`, `.agents/skills/arghbox-triage/` and `.arghbox/`. A `config.php` you keep inside `public/arghbox/` stays where it is, and stays ignored with the folder.
 
 **Without npm.** Download `arghbox-<version>.zip` from the [GitHub releases](https://github.com/BinaryBananaLLC/ArghBox/releases), unzip it, and upload the `arghbox` folder. Or upload this repository's `arghbox/` folder directly, or run `node tools/install.mjs --target <your site repo> --public <public dir> --skill` from a clone (the same installer as `npx arghbox install`).
 
@@ -216,7 +216,7 @@ If something caches it, add a bypass rule for the path `/arghbox/*` (Cloudflare:
 
 On your computer, in the repository of your site (or any folder where you run Claude Code):
 
-1. If you ran `npx arghbox install ... --skill` in step 4, the skill is already in `.claude/skills/arghbox-triage/`. Otherwise run `npx arghbox install --skill-only`, or unzip the skill zip from the releases into `.claude/skills/`.
+1. If you ran `npx arghbox install` in step 4, the skill is already in `.claude/skills/arghbox-triage/` and `.agents/skills/arghbox-triage/`. Otherwise run `npx arghbox install --skill-only`, or unzip the skill zip from the releases into `.claude/skills/`.
 2. Create a `.arghbox/` folder with two files, and add `.arghbox/` to your `.gitignore`:
    - `.arghbox/site.json`: `{"url": "https://example.com/arghbox/"}`
    - `.arghbox/token`: the **triage token** from step 2

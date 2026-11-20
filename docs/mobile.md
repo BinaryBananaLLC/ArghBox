@@ -388,4 +388,4 @@ Also add to your store listing: where the board is, and how fast you act on repo
 5. Close and open the app again. The votes you made must still show (the voter key is kept).
 6. Report a published entry from the board. Reports are counted by network address, so to see the auto-hide with one phone, set `'report_hide_at' => 1` in a test setup. The entry then leaves the board and shows up under **Pending** and **Reported**, marked "Hidden after reports". Try **Put it back (dismiss reports)** on it, **Keep it (dismiss reports)** on a reported entry that is still public, and **Block author** and **Unblock author** on the admin page.
 
-Questions and ideas about mobile apps go to the Feedback box on [arghbox.com](https://arghbox.com). Bugs go to [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues).
+Bugs, ideas and questions about mobile apps are welcome as [GitHub issues](https://github.com/BinaryBananaLLC/ArghBox/issues/new/choose) or on the Feedback tab on [ArghBox.com](https://arghbox.com/#arghbox).

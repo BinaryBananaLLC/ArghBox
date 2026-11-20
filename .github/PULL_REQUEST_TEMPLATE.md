@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- A short description of the change and the problem it solves. Link the entry on the arghbox.com board if there is one. -->
+<!-- A short description of the change and the problem it solves. Link the issue or the entry on the ArghBox.com board if there is one. -->
 
 ## Checklist
 

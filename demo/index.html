@@ -3,25 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pocket Maps - tiny map tools</title>
-<meta name="description" content="Pocket Maps makes tiny map tools: drop pins, draw routes, share a link. This is the ArghBox demo page.">
+<title>Contoso Tasks: an ArghBox demo</title>
+<meta name="description" content="Try ArghBox on Contoso Tasks, a made-up website: add feedback and vote as a visitor, publish it on the admin page (password: demo), and see the same board inside a phone app.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="/art/brand/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/art/brand/favicon.ico" sizes="48x48">
-<link rel="apple-touch-icon" href="/art/brand/apple-touch-icon.png">
-<link rel="manifest" href="/art/brand/site.webmanifest">
-<link rel="stylesheet" href="/demo.css">
+<link rel="icon" href="contoso.svg" type="image/svg+xml">
+<link rel="stylesheet" href="demo.css?v=0.1.1">
 </head>
 <body>
+<aside class="demo-bar" aria-labelledby="demo-bar-title">
+  <div class="wrap">
+    <p class="demo-bar-lead"><strong id="demo-bar-title">ArghBox demo.</strong> Contoso Tasks is a made-up website with <a href="https://github.com/BinaryBananaLLC/ArghBox">ArghBox</a> installed. Try it in three steps:</p>
+    <ol class="demo-steps">
+      <li><span class="n" aria-hidden="true">1</span><span><a href="#arghbox">Open Feedback</a> (the tab on the right edge). Vote, or add an idea.</span></li>
+      <li id="demo-step-2"><span class="n" aria-hidden="true">2</span><span>Open the <a href="arghbox/admin/" id="demo-admin-link">admin page</a> <span id="demo-password">with the password <code>demo</code></span> and publish what you added.</span></li>
+      <li><span class="n" aria-hidden="true">3</span><span>Come back: it is on the board, here and <a href="#apps">in the phone app</a>.</span></li>
+    </ol>
+    <p class="demo-bar-foot" id="demo-local-note" hidden>Everything runs in your browser and stays there. <button type="button" class="link-btn" id="demo-reset">Reset the demo</button></p>
+  </div>
+</aside>
+
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="/"><img src="/art/brand/favicon-32.png" width="30" height="30" alt="">Pocket Maps</a>
+    <a class="brand" href="./"><img src="contoso.svg" width="30" height="30" alt="">Contoso Tasks</a>
     <nav aria-label="Main">
       <a href="#features">Features</a>
-      <a href="#feedback">Feedback</a>
-      <a href="#faq">FAQ</a>
-      <a href="/arghbox/admin/">Admin</a>
-      <a class="fb-icon" id="header-feedback" href="#arghbox" aria-label="Feedback: share an idea or report a bug" title="Feedback"><svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><path fill="#ffc83d" d="M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z"/><path fill="#e8553d" d="M3 13h26v8H3zM5 21v8h22v-8M10 17h12"/></svg></a>
+      <a href="#apps">Apps</a>
+      <a href="#help">Help</a>
+      <a href="arghbox/admin/">Admin</a>
+      <a class="fb-icon" id="header-feedback" href="#arghbox" aria-label="Feedback: share an idea or report a bug" title="Feedback"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg></a>
     </nav>
   </div>
 </header>
@@ -30,68 +39,89 @@
   <div class="wrap">
     <div class="hero">
       <div>
-        <h1>Tiny map tools for people who just need a pin.</h1>
-        <p class="lead">Drop pins, draw a route, share a link. No account, no tracking, no 40 MB app. Pocket Maps is a made-up site that shows how ArghBox looks on a real page.</p>
+        <h1>Get things done, not managed.</h1>
+        <p class="lead">Contoso Tasks is the simple to-do list for the web, iPhone and Android. Lists, due dates and reminders, and nothing you have to learn.</p>
         <div class="actions">
           <a class="btn" href="#features">See what it does</a>
-          <a class="btn ghost" href="#arghbox">Give feedback</a>
+          <a class="btn ghost" href="#apps">Get the app</a>
         </div>
       </div>
-      <svg class="map" viewBox="0 0 400 300" role="img" aria-label="A small illustrated map with three pins">
-        <rect class="land" width="400" height="300"/>
-        <path class="water" d="M0 210 C60 190 110 240 170 225 S300 200 400 235 L400 300 L0 300Z"/>
-        <path class="road" d="M-10 110 C80 90 140 140 230 120 S340 60 410 80"/>
-        <path class="road small" d="M120 0 C130 80 110 150 150 215"/>
-        <path class="road small" d="M300 0 C280 60 300 110 270 170"/>
-        <g class="pin"><path d="M90 98c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36S90 112 90 98z"/><circle cx="108" cy="97" r="6" fill="var(--land)"/></g>
-        <g class="pin"><path d="M230 112c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36s-18-22-18-36z"/><circle cx="248" cy="111" r="6" fill="var(--land)"/></g>
-        <g class="pin"><path d="M300 170c0-12 9-20 18-20s18 8 18 20c0 14-18 36-18 36s-18-22-18-36z"/><circle cx="318" cy="169" r="6" fill="var(--land)"/></g>
-      </svg>
+      <div class="tasks-card" role="group" aria-labelledby="tasks-head">
+        <p class="tasks-head"><span id="tasks-head">Today</span><span class="tasks-date">4 tasks</span></p>
+        <label><input type="checkbox" checked> Buy oat milk</label>
+        <label><input type="checkbox"> Call the plumber about the sink</label>
+        <label><input type="checkbox"> Send the March invoice <span class="due">5 pm</span></label>
+        <label><input type="checkbox"> Plan the Sunday hike</label>
+      </div>
     </div>
 
     <div class="features" id="features">
-      <div class="card"><h2>Drop a pin</h2><p>Tap the map, name the place, copy the link. Friends see exactly the spot you meant.</p></div>
-      <div class="card"><h2>Draw a route</h2><p>Click a few points and get the distance and a rough walking time. Great for a Sunday loop.</p></div>
-      <div class="card"><h2>Works offline</h2><p>Save an area before you leave. Your pins stay on your device, not on our servers.</p></div>
+      <div class="card"><h2>Lists that stay simple</h2><p>Type a task, press Enter, tick it off. Drag to reorder. That is the whole manual.</p></div>
+      <div class="card"><h2>Due dates and reminders</h2><p>"Friday 5 pm" just works. Your phone buzzes once, at the right time, wherever you are.</p></div>
+      <div class="card"><h2>On every device</h2><p>Your lists sync between the browser, iPhone and Android within a second.</p></div>
     </div>
 
-    <section class="block" id="feedback">
-      <h2>Tell us what bugs you</h2>
-      <p>This page has the <strong>Feedback</strong> tab on its right edge. Click it to see the public list, vote on ideas, or add your own. Everything here is demo data.</p>
-      <div class="demo-links">
-        <strong>Try the ways to open it</strong>
-        <ul>
-          <li><a href="#arghbox">Open the feedback box</a> (<code>#arghbox</code> link; the ArghBox icon at the top right is one too)</li>
-          <li><a href="#arghbox-bug">Report a bug</a> (<code>#arghbox-bug</code> link, starts on a bug)</li>
-          <li><a href="#arghbox-add">Add a new idea</a> (<code>#arghbox-add</code> link)</li>
-          <li><button class="btn ghost" type="button" id="open-api">Open from JavaScript</button> (<code>ArghBox.open()</code>)</li>
-          <li><a href="/arghbox/app.html?platform=ios&amp;version=1.0.0" id="app-page-link">Open the mobile app page</a> (what a native app shows in a WebView, <code>/arghbox/app.html</code>)</li>
-        </ul>
+    <section class="block apps" id="apps" aria-labelledby="apps-title">
+      <div class="apps-intro">
+        <h2 id="apps-title">Contoso Tasks on your phone</h2>
+        <p>The app has the same feedback board, inside the app. It is the ArghBox mobile page in a WebView: one address, no sign-in, no native screens to build. Votes and ideas from the app and the website land in the same box.</p>
+        <ol class="phone-steps">
+          <li>In the phone, tap <strong>Send feedback</strong>.</li>
+          <li>Vote, add an idea, then close the board.</li>
+          <li>Watch the messages the app receives.</li>
+        </ol>
+      </div>
+      <div class="apps-more">
+        <div class="bridge" aria-labelledby="bridge-title">
+          <h3 id="bridge-title">Messages to the app</h3>
+          <p class="bridge-help">What the app's bridge receives, newest first: <code>open</code>, <code>vote</code>, <code>add</code> (an entry was sent), <code>link</code> (open it in the system browser) and <code>close</code> (dismiss the WebView). Never anything the visitor typed.</p>
+          <ol class="bridge-log" id="bridge-log" aria-live="polite"><li class="empty">Nothing yet. Tap Send feedback in the phone.</li></ol>
+        </div>
+        <pre class="code" tabindex="0" aria-label="Swift: show the board in a WKWebView"><code>// iOS: the whole feedback screen
+let url = URL(string: "https://contoso.example/arghbox/app.html"
+  + "?platform=ios&amp;version=5.12.1&amp;from=/settings")!
+webView.load(URLRequest(url: url))</code></pre>
+        <p class="small"><a href="arghbox/app.html?platform=ios&amp;version=5.12.1&amp;from=/settings" id="app-page-link">Open the app page on its own</a> · <a href="https://github.com/BinaryBananaLLC/ArghBox/blob/main/docs/mobile.md">Mobile guide</a></p>
+      </div>
+
+      <div class="phone" id="phone">
+        <div class="phone-screen">
+          <div class="phone-status" aria-hidden="true"><span>9:41</span><span class="phone-icons">●●● ▮</span></div>
+          <div class="app-screen" id="app-screen">
+            <p class="app-title">Settings</p>
+            <ul class="app-rows">
+              <li><span>Account</span><span class="chev" aria-hidden="true">›</span></li>
+              <li><span>Notifications</span><span class="chev" aria-hidden="true">›</span></li>
+              <li><span>Appearance</span><span class="chev" aria-hidden="true">›</span></li>
+              <li><button type="button" id="phone-feedback"><span>Send feedback</span><span class="chev" aria-hidden="true">›</span></button></li>
+            </ul>
+            <p class="app-version">Contoso Tasks 5.12.1</p>
+          </div>
+          <div class="webview" id="webview" hidden></div>
+        </div>
       </div>
     </section>
 
-    <section class="block faq" id="faq">
+    <section class="block faq" id="help">
       <h2>Questions</h2>
-      <details><summary>Is Pocket Maps a real product?</summary><p>No. It is a pretend site so the ArghBox widget has something realistic to sit on.</p></details>
-      <details><summary>Where does the feedback go?</summary><p>Into a SQLite file on this dev server. In production, you triage it with your own AI assistant.</p></details>
-      <details><summary>Do I need an account to vote?</summary><p>No. A tiny Turnstile check keeps bots out and nobody has to sign in.</p></details>
+      <details><summary>Is Contoso Tasks a real product?</summary><p>No. It is a made-up site, so ArghBox has something realistic to sit on.</p></details>
+      <details><summary>Where does my feedback go?</summary><p>Into the ArghBox on this site. New ideas wait until the owner publishes them, which you can do yourself on the admin page.</p></details>
+      <details><summary>Do I need an account to vote?</summary><p>No. Nobody signs in, and a quiet human check keeps bots out.</p></details>
     </section>
   </div>
 </main>
 
 <footer>
   <div class="wrap">
-    <div class="grow">Pocket Maps, a fictional site. Feedback by <a href="https://github.com/BinaryBananaLLC/ArghBox" rel="noopener">ArghBox</a>.</div>
-    <a href="/arghbox/api.php?action=feed">Atom feed</a>
-    <a href="/arghbox/admin/">Admin page</a>
+    <div class="grow">Contoso Tasks is a fictional product. Feedback by <a href="https://github.com/BinaryBananaLLC/ArghBox">ArghBox</a>.</div>
+    <a href="#arghbox-add">Suggest an idea</a>
+    <a href="#arghbox-bug">Report a bug</a>
+    <a href="arghbox/admin/">Admin page</a>
   </div>
 </footer>
 
-<script>
-document.getElementById('open-api').addEventListener('click', function () {
-  if (window.ArghBox) window.ArghBox.open({ type: 'idea', view: 'list' });
-});
-</script>
-<script src="/arghbox/arghbox.js?v=0.1.1" defer></script>
+<!-- arghbox-demo-backend -->
+<script src="demo.js?v=0.1.1" defer></script>
+<script src="arghbox/arghbox.js?v=0.1.1" data-accent="#1f5fd6" defer></script>
 </body>
 </html>

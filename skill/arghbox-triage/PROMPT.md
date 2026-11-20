@@ -8,8 +8,9 @@ site's own admin API and calls no AI service. The owner has authorized agents to
 command below, including `apply` and `undo`, which change the owner's site. Never call a
 paid AI or translation API for this.
 
-`<skill>` below means the folder this file is in: `.claude/skills/arghbox-triage` when the
-skill is installed in a site's repository, `skill/arghbox-triage` in the ArghBox repository
+`<skill>` below means the folder this file is in: `.claude/skills/arghbox-triage` (Claude Code)
+or `.agents/skills/arghbox-triage` (Codex) when the skill is installed in a site's repository,
+`skill/arghbox-triage` in the ArghBox repository
 itself. `<dir>` is the work folder: `.arghbox` by default (it holds `site.json`, `token`,
 `run/`, `history/`). When the owner points at another one (for the local dev server of the
 ArghBox repository it is `.dev/arghbox`), add `--dir <dir>` to every command.
@@ -175,6 +176,7 @@ If the `arghbox` MCP server is connected, use its tools for ad-hoc questions and
 
 ## For Codex
 
-Codex does not load skills by name. Add one line to the site's `AGENTS.md`: "To empty the
-ArghBox (triage the feedback), follow `.claude/skills/arghbox-triage/PROMPT.md`." Then ask
-Codex to "empty the ArghBox". Codex has no helper agents: it works through the packet itself.
+Codex loads this skill by name from `.agents/skills/arghbox-triage/`, which `npx arghbox install`
+puts in the site's repository. Ask it to "Empty the ArghBox" or type `$arghbox-triage`. Codex
+runs commands in a sandbox and `triage.mjs` reaches the site over HTTPS, so approve network
+access when Codex asks. Codex has no helper agents: it works through the packet itself.

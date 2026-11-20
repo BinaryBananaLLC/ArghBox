@@ -1,94 +1,157 @@
+/* Contoso Tasks: the made-up site of the ArghBox demo. */
 :root {
-  --bg: #fff6e9;
+  --bg: #f6f8fc;
   --panel: #ffffff;
-  --ink: #2b1d1a;
-  --muted: #6f5f58;
-  --line: #ecd9c0;
-  --accent: #c93a22;
-  --link: #a82b15;
-  --accent-soft: #ffe7c7;
-  --pin: #e8553d;
-  --land: #f4ead7;
-  --water: #cfe6ee;
-  --road: #ffffff;
+  --ink: #142037;
+  --muted: #56617a;
+  --line: #e1e6ef;
+  --brand: #1f5fd6;
+  --brand-ink: #ffffff;
+  --link: #1a52bb;
+  --soft: #e9f0fe;
+  --bar: #fff7e8;
+  --bar-line: #f0dcb4;
+  --bar-ink: #3d2a12;
+  --phone: #10151f;
+  --app-bg: #f2f3f7;
+  --app-row: #ffffff;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1f1613;
-    --panel: #2a1e1a;
-    --ink: #fff6e9;
-    --muted: #b9a89f;
-    --line: #43332d;
-    --accent: #ff7a5f;
-    --link: #ff7a5f;
-    --accent-soft: #3a2a24;
-    --land: #2c2420;
-    --water: #1f3340;
-    --road: #4a3b35;
+    --bg: #0e1320;
+    --panel: #161d2c;
+    --ink: #eef2f9;
+    --muted: #a4aec3;
+    --line: #273149;
+    --brand: #6f9dff;
+    --brand-ink: #0e1320;
+    --link: #8fb3ff;
+    --soft: #1b2741;
+    --bar: #2a2114;
+    --bar-line: #4a3a20;
+    --bar-ink: #f6e7cc;
+    --phone: #000000;
+    --app-bg: #111521;
+    --app-row: #1c2232;
   }
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-a { color: var(--link, var(--accent)); text-underline-offset: 2px; }
+a { color: var(--link); text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
-.wrap { max-width: 62rem; margin: 0 auto; padding: 0 1.25rem; }
+code { background: var(--soft); padding: .1em .35em; border-radius: 5px; font-size: .9em; }
+.wrap { max-width: 64rem; margin: 0 auto; padding: 0 1.25rem; }
+[hidden] { display: none !important; }
 
-header.top { border-bottom: 1px solid var(--line); }
-header.top .wrap { display: flex; align-items: center; gap: 1rem; padding-top: .9rem; padding-bottom: .9rem; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.2rem; color: var(--ink); text-decoration: none; }
+/* The demo bar: what this page is and how to try it. */
+.demo-bar { background: var(--bar); color: var(--bar-ink); border-bottom: 1px solid var(--bar-line); font-size: .95rem; }
+.demo-bar .wrap { padding-top: .8rem; padding-bottom: .8rem; }
+.demo-bar a { color: inherit; font-weight: 600; }
+.demo-bar p { margin: 0; }
+.demo-bar code { background: rgba(255, 255, 255, .7); font-weight: 700; }
+@media (prefers-color-scheme: dark) { .demo-bar code { background: rgba(0, 0, 0, .35); } }
+.demo-steps { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .4rem 1.25rem; grid-template-columns: repeat(3, 1fr); }
+.demo-steps li { display: flex; gap: .5rem; align-items: flex-start; line-height: 1.45; }
+.demo-steps .n { flex: none; width: 1.45rem; height: 1.45rem; border-radius: 50%; background: var(--bar-ink); color: var(--bar); display: grid; place-items: center; font-weight: 800; font-size: .8rem; margin-top: .05rem; }
+.demo-bar-foot { margin-top: .5rem !important; font-size: .88rem; opacity: .9; }
+/* After the visitor sent an entry: step 2 is what to do next. */
+.demo-steps li.now { background: var(--bar-ink); color: var(--bar); border-radius: 10px; padding: .3rem .6rem; margin: -.3rem -.6rem; }
+.demo-steps li.now .n { background: var(--bar); color: var(--bar-ink); }
+.link-btn { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+header.top { border-bottom: 1px solid var(--line); background: var(--panel); }
+header.top .wrap { display: flex; align-items: center; gap: 1rem; padding-top: .8rem; padding-bottom: .8rem; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.15rem; color: var(--ink); text-decoration: none; letter-spacing: -.01em; }
 .brand img { width: 30px; height: 30px; }
-nav { margin-left: auto; display: flex; gap: 1.25rem; flex-wrap: wrap; }
+nav { margin-left: auto; display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
 nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .95rem; }
 nav a:hover { color: var(--ink); }
-nav .fb-icon { display: inline-flex; align-items: center; }
-.fb-icon svg { stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
-@media (prefers-reduced-motion: no-preference) { .fb-icon svg { transition: transform .2s; } .fb-icon:hover svg { transform: rotate(-8deg) scale(1.08); } }
+.fb-icon { display: inline-flex; align-items: center; color: var(--muted); }
+.fb-icon svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 
-.hero { padding: 3.5rem 0 2.5rem; display: grid; gap: 2rem; grid-template-columns: 1.1fr .9fr; align-items: center; }
-.hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.1; margin: 0 0 1rem; letter-spacing: -.02em; }
+.hero { padding: 3.5rem 0 2.5rem; display: grid; gap: 2.5rem; grid-template-columns: 1.15fr .85fr; align-items: center; }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.1; margin: 0 0 1rem; letter-spacing: -.025em; }
 .hero p.lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 1.5rem; }
-.btn { display: inline-block; background: var(--accent); color: #fff; padding: .7rem 1.2rem; border-radius: 10px; text-decoration: none; border: 2px solid var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
+.actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.btn { display: inline-block; background: var(--brand); color: var(--brand-ink); padding: .7rem 1.2rem; border-radius: 10px; text-decoration: none; border: 2px solid var(--brand); font: inherit; font-weight: 700; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-@media (prefers-color-scheme: dark) { .btn { color: #1f1613; } .btn.ghost { color: var(--ink); } }
-.hero .actions { display: flex; gap: .75rem; flex-wrap: wrap; }
 
-.map { width: 100%; height: auto; border-radius: 18px; border: 1px solid var(--line); background: var(--land); }
-.map .land { fill: var(--land); }
-.map .water { fill: var(--water); }
-.map .road { stroke: var(--road); stroke-width: 7; fill: none; stroke-linecap: round; }
-.map .road.small { stroke-width: 3.5; }
-.map .pin { fill: var(--pin); stroke: var(--ink); stroke-width: 2; }
+.tasks-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.25rem 1.1rem; box-shadow: 0 12px 32px -18px rgba(20, 32, 55, .35); }
+.tasks-head { display: flex; justify-content: space-between; margin: 0 0 .5rem; font-weight: 800; }
+.tasks-date { color: var(--muted); font-weight: 600; font-size: .9rem; }
+.tasks-card label { display: flex; gap: .7rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--line); cursor: pointer; }
+.tasks-card input { width: 1.15rem; height: 1.15rem; accent-color: var(--brand); flex: none; }
+.tasks-card label:has(input:checked) { color: var(--muted); text-decoration: line-through; }
+.due { margin-left: auto; white-space: nowrap; font-size: .8rem; font-weight: 700; color: var(--brand); background: var(--soft); border-radius: 6px; padding: .05rem .45rem; text-decoration: none; }
 
 .features { display: grid; gap: 1.25rem; grid-template-columns: repeat(3, 1fr); padding: 1rem 0 2.5rem; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1.25rem 1.25rem 1rem; }
 .card h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
 .card p { margin: 0; color: var(--muted); font-size: .98rem; }
 
-section.block { padding: 2rem 0; border-top: 1px solid var(--line); }
+section.block { padding: 2.5rem 0; border-top: 1px solid var(--line); }
 section.block h2 { margin: 0 0 .75rem; font-size: 1.5rem; letter-spacing: -.01em; }
-.demo-links { background: var(--accent-soft); border-radius: 16px; padding: 1.5rem; }
-.demo-links ul { margin: .5rem 0 0; padding-left: 1.2rem; }
-.demo-links li { margin: .5rem 0; }
-code { background: var(--accent-soft); padding: .1em .35em; border-radius: 5px; font-size: .9em; }
-.demo-links code { background: var(--panel); }
+
+/* The phone app section: a phone with a native-looking screen and the ArghBox app page in a WebView (an iframe). */
+.apps { display: grid; gap: 0 2.5rem; grid-template-columns: 1fr 320px; grid-template-areas: "intro phone" "more phone"; align-items: start; }
+.apps > *, .hero > * { min-width: 0; } /* the code sample scrolls inside its box instead of widening the page */
+.apps-intro { grid-area: intro; }
+.apps-more { grid-area: more; }
+.apps .phone { grid-area: phone; }
+.apps-intro p { color: var(--muted); }
+.phone-steps { padding-left: 1.3rem; margin: 0 0 1rem; }
+.phone-steps li { margin: .2rem 0; }
+.code { background: var(--phone); color: #dfe7f7; border-radius: 12px; padding: .9rem 1rem; overflow-x: auto; font-size: .82rem; line-height: 1.5; margin: 0 0 1.25rem; }
+.code code { background: none; padding: 0; font-size: inherit; }
+.code:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.bridge h3 { margin: 0 0 .25rem; font-size: 1rem; }
+.bridge-help { margin: 0 0 .5rem; font-size: .88rem; color: var(--muted); }
+.bridge-help code { font-size: .85em; }
+.bridge-log { list-style: none; margin: 0 0 1rem; padding: .5rem .75rem; min-height: 4.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font: .8rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.bridge-log .empty { color: var(--muted); font-family: system-ui, sans-serif; font-size: .9rem; }
+.bridge-log .t { font-weight: 700; color: var(--brand); }
+.small { font-size: .92rem; }
+
+.phone { width: 100%; max-width: 320px; margin: 0 auto; background: var(--phone); border-radius: 44px; padding: 12px; box-shadow: 0 24px 48px -24px rgba(20, 32, 55, .6); }
+.phone-screen { position: relative; height: 620px; border-radius: 34px; overflow: hidden; background: var(--app-bg); color: var(--ink); }
+.phone-status { display: flex; justify-content: space-between; padding: .7rem 1.4rem 0; font-size: .78rem; font-weight: 700; height: 2.2rem; }
+.phone-icons { letter-spacing: .1em; font-size: .6rem; }
+.app-screen { padding: .5rem 1rem; }
+.app-title { font-size: 1.75rem; font-weight: 800; margin: .4rem 0 1rem; letter-spacing: -.02em; }
+.app-rows { list-style: none; margin: 0; padding: 0; background: var(--app-row); border-radius: 12px; overflow: hidden; }
+.app-rows li { display: flex; justify-content: space-between; align-items: center; padding: .8rem 1rem; border-top: 1px solid var(--line); font-size: .98rem; }
+.app-rows li:first-child { border-top: 0; }
+.app-rows li:has(button) { padding: 0; }
+.app-rows button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: .8rem 1rem; background: none; border: 0; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+.chev { color: var(--muted); font-size: 1.2rem; line-height: 1; }
+.app-version { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 1.25rem; }
+.webview { position: absolute; inset: 2.2rem 0 0; background: var(--app-bg); }
+.webview iframe { display: block; width: 100%; height: 100%; border: 0; }
 
 .faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: .75rem 1rem; margin-bottom: .6rem; }
 .faq summary { cursor: pointer; font-weight: 700; }
 .faq p { color: var(--muted); margin: .5rem 0 0; }
 
 footer { border-top: 1px solid var(--line); padding: 2rem 0 5rem; color: var(--muted); font-size: .92rem; }
-footer .wrap { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+footer .wrap { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
 footer .grow { flex: 1; min-width: 14rem; }
 
-@media (max-width: 760px) {
+@media (max-width: 860px) {
+  .demo-steps { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; padding-top: 2rem; }
   .features { grid-template-columns: 1fr; }
-  nav { margin-left: 0; }
+  .apps { grid-template-columns: 1fr; grid-template-areas: "intro" "phone" "more"; }
+  .apps .phone { margin-bottom: 1.75rem; }
+}
+@media (max-width: 560px) {
+  nav { margin-left: 0; gap: 1rem; }
+  .phone-screen { height: 560px; }
 }

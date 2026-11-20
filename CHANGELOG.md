@@ -4,6 +4,20 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- **Live demo on GitHub Pages** (`https://binarybananallc.github.io/ArghBox/`): Contoso Tasks, a made-up site with the real widget, the real admin page (password `demo`) and the mobile app page in a phone, next to the messages a native app receives. Pages runs no PHP, so `demo/backend.js` answers the API in the browser and keeps the box in `localStorage`. `npm run demo` serves the same build locally. The **Demo** workflow publishes it after each release.
+- The triage skill is also installed to `.agents/skills/arghbox-triage/`, so Codex loads it by name. Git-ignore it like `.claude/skills/arghbox-triage/` if a build script installs it.
+
+### Changed
+
+- The demo site in `demo/` is now Contoso Tasks (was Pocket Maps). `npm run dev` serves it with the real PHP box as before.
+- `npx arghbox install` needs no flags: it finds the web root (`public`, `public_html`, `static`, `www`, `htdocs`, or `.`) and installs the triage skill by default (`--no-skill` skips it).
+
+### Fixed
+
+- The dialog title no longer shows a focus ring when the board opens without a click, as on the mobile app page (`app.html`).
+
 ## [0.1.1] - 2026-11-18
 
 ### Added

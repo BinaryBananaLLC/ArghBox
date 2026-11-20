@@ -1,23 +1,25 @@
 # Demo site
 
-**Looking for the live demo? It's at [arghbox.com/demo](https://arghbox.com/demo/).** There you can vote and add an argh as a visitor, then run the AI triage as the owner, all in your browser.
+**Try it live: [binarybananallc.github.io/ArghBox](https://binarybananallc.github.io/ArghBox/).** Admin password: `demo`.
 
-This folder is "Pocket Maps", a made-up website that `npm run dev` serves so you can try ArghBox on your own machine. GitHub only shows its source, because ArghBox needs PHP to run.
+This folder is "Contoso Tasks", a made-up to-do app website with ArghBox installed. It has the real widget, the real admin page and, in the "on your phone" section, the real mobile app page in a phone, next to the messages a native app receives from it.
 
-## Run it
+Try it in three steps:
 
-You need PHP 8.1+ with SQLite and Node.js 22+. From the repository root:
+1. Open **Feedback** (the tab on the right edge). Vote, or add an idea.
+2. Open the **admin page** with the password `demo` and publish what you added.
+3. Come back: it is on the board, on the page and in the phone.
 
-```
-npm run dev
-```
+## Two ways to run it
 
-Then open:
+| | Backend | Admin sign-in |
+|---|---|---|
+| **GitHub Pages** (`npm run demo` on your machine, at http://127.0.0.1:8790/ArghBox/) | `backend.js` answers `api.php` in the browser and keeps the box in `localStorage`. Nothing leaves the browser; "Reset the demo" starts over. No PHP needed. | Password `demo` |
+| **Dev server** (`npm run dev`, at http://localhost:8787/) | The real PHP and SQLite box, seeded with sample entries, with a fake Turnstile | The owner token printed in the terminal |
 
-- `http://localhost:8787/`: the demo site with the **Feedback** tab on its right edge
-- `http://localhost:8787/arghbox/admin/`: the admin page (the owner token is printed in the terminal)
+`npm run demo` runs `tools/build-pages.mjs`, which copies this folder and the browser files of `arghbox/` into `dist/pages/` and adds `backend.js` (plus `admin-note.js` on the admin page and `phone-bridge.js` on the app page). The **Demo** workflow (`.github/workflows/demo.yml`) publishes that folder to GitHub Pages after each release. None of these demo files are part of ArghBox itself: a real install never loads them.
 
-The box comes seeded with sample entries, and a fake Turnstile lets every check pass. Everything is stored in `.dev/`, which git ignores. Run `node tools/dev.mjs --help` for the options.
+Both need Node.js 22+; the dev server also needs PHP 8.1+ with SQLite.
 
 ## Try the triage
 

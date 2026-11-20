@@ -27,7 +27,7 @@ async function openDialog(page) {
 
 test('the demo page loads the widget and the list comes from the seeded data', async ({ page, stack }) => {
   await page.goto(stack.siteUrl + '/')
-  await expect(page).toHaveTitle(/Pocket Maps/)
+  await expect(page).toHaveTitle(/Contoso Tasks/)
   await expect(tab(page)).toHaveText('Feedback')
   await openDialog(page)
   await expect(card(page, 'Dark mode for the widget')).toBeVisible()
@@ -144,6 +144,7 @@ test('exports download as JSON, CSV and Jira CSV', async ({ stack }) => {
 // ---------------------------------------------------------------- impact on the host page (SEO and speed)
 
 const ASSET_REQUEST = /\.(css|png|svg|ico|webmanifest|jpe?g|webp)(\?|$)/
+const HOST_SCRIPT = /^\/demo\.js(\?|$)/ // the demo site's own script (demo bar, phone), not the widget's
 const pathOf = (r) => { const u = new URL(r.url()); return u.pathname + u.search }
 
 test('before any interaction the widget adds one script request and nothing else: no API, no app, no Turnstile', async ({ page, stack }) => {
@@ -157,7 +158,7 @@ test('before any interaction the widget adds one script request and nothing else
   await expect(tab(page)).toBeVisible()
   await page.waitForLoadState('networkidle')
   expect(requests.filter((u) => u.startsWith('/arghbox/'))).toEqual(['/arghbox/arghbox.js?v=0.1.1'])
-  expect(requests.filter((u) => !u.startsWith('/arghbox/') && !ASSET_REQUEST.test(u) && u !== '/')).toEqual([])
+  expect(requests.filter((u) => !u.startsWith('/arghbox/') && !ASSET_REQUEST.test(u) && !HOST_SCRIPT.test(u) && u !== '/')).toEqual([])
   expect(external).toEqual([])
 })
 
@@ -219,7 +220,7 @@ test('the host DOM: only #arghbox-root is added, <head> is untouched, and the ta
   expect(dom.lightLinks).toBe(0)
   expect(dom.shadowText).toMatch(/^Feedback\s*×?$/) // the tab label and the hide button's ×: all a rendering crawler sees until someone clicks
   expect(dom.shadowLinks).toBe(0)
-  expect(dom.title).toMatch(/Pocket Maps/)
+  expect(dom.title).toMatch(/Contoso Tasks/)
 })
 
 test('no console errors or page errors, and no layout shift caused by the widget on the demo page', async ({ page, stack }) => {
@@ -293,22 +294,26 @@ test('the demo hash links open the right view: #arghbox-add the form, the bug li
   expect(await page.evaluate(() => location.hash)).toBe('')
 })
 
-test('the demo page links to the admin page and the Atom feed, and both answer', async ({ page, stack }) => {
+test('the demo page links to the admin page with a relative URL, and the admin page and the Atom feed answer', async ({ page, stack }) => {
   await page.goto(stack.siteUrl + '/')
-  const hrefs = await page.locator('a[href*="/arghbox/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
-  expect(hrefs).toContain('/arghbox/admin/')
-  expect(hrefs).toContain('/arghbox/api.php?action=feed')
+  // relative, so the same page works at / (npm run dev) and under /ArghBox/ (GitHub Pages)
+  const hrefs = await page.locator('a[href*="arghbox/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
+  expect(hrefs).toContain('arghbox/admin/')
+  expect(hrefs.filter((h) => h.startsWith('/'))).toEqual([])
   for (const href of ['/arghbox/admin/', '/arghbox/api.php?action=feed']) {
     expect((await page.request.get(stack.siteUrl + href)).status()).toBe(200)
   }
+  // with the real box, the demo bar names the dev owner token, not the GitHub Pages password
+  await expect(page.locator('#demo-password')).toHaveText(/owner token that npm run dev printed/)
+  await expect(page.locator('#demo-local-note')).toBeHidden()
 })
 
 test('the demo page links to the mobile app page, which opens the box full screen with the real API', async ({ page, stack }) => {
   await page.goto(stack.siteUrl + '/')
   const link = page.locator('#app-page-link')
-  await expect(link).toHaveAttribute('href', '/arghbox/app.html?platform=ios&version=1.0.0')
+  await expect(link).toHaveAttribute('href', 'arghbox/app.html?platform=ios&version=5.12.1&from=/settings')
   await link.click()
-  await expect(page).toHaveURL(/\/arghbox\/app\.html\?platform=ios&version=1\.0\.0/)
+  await expect(page).toHaveURL(/\/arghbox\/app\.html\?platform=ios&version=5\.12\.1&from=\/settings/)
   await expect(page.locator('#arghbox-root .panel h2')).toBeVisible()
   await expect(page.locator('#arghbox-root .card').first()).toBeVisible()
   await expect(page.locator('#arghbox-root .tw')).toBeHidden()

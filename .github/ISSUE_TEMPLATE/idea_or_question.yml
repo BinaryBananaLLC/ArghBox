@@ -1,0 +1,28 @@
+name: Idea or question
+description: Suggest a feature, or ask how something in ArghBox works.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Please search the [open issues](https://github.com/BinaryBananaLLC/ArghBox/issues) first. You can also post this on the Feedback tab on [ArghBox.com](https://arghbox.com/#arghbox-add), where other people can vote for it.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Is it an idea or a question?
+      options:
+        - Idea
+        - Question
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Your idea or question
+      description: What you would like ArghBox to do, or what you want to know.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters to you
+      description: Optional. What you are trying to do on your site or app.

@@ -16,13 +16,13 @@ Nothing is deleted anywhere. Every action is on the admin page's log and can be 
 
 ## Install
 
-Copy `skill/arghbox-triage/` into the repository you run Claude Code in, as `.claude/skills/arghbox-triage/`. The easy way, in that repository:
+Copy `skill/arghbox-triage/` into the repository you run Claude Code in, as `.claude/skills/arghbox-triage/` (and as `.agents/skills/arghbox-triage/` for Codex). The easy way, in that repository:
 
 ```
 npx arghbox install --skill-only
 ```
 
-`--skill-only` copies just the skill (use `--public <public dir> --skill` instead to copy the `arghbox/` folder too; with `npm install --save-dev arghbox` and a `prebuild` script the skill stays in step with your server version, see [install.md](install.md#4-get-the-folder-onto-your-site)). From a clone of this repository, `node tools/install.mjs --target <your repo> --skill-only` does the same, and you can also unzip `arghbox-triage-skill-<version>.zip` into `.claude/skills/`. Then create the git-ignored `.arghbox/` folder:
+`--skill-only` copies just the skill (plain `npx arghbox install` copies the `arghbox/` folder too, and the skill unless you pass `--no-skill`; with `npm install --save-dev arghbox` and a `prebuild` script the skill stays in step with your server version, see [install.md](install.md#4-get-the-folder-onto-your-site)). From a clone of this repository, `node tools/install.mjs --target <your repo> --skill-only` does the same, and you can also unzip `arghbox-triage-skill-<version>.zip` into `.claude/skills/`. Then create the git-ignored `.arghbox/` folder:
 
 - `.arghbox/site.json`: `{"url": "https://example.com/arghbox/"}`, the folder that holds `api.php`
 - `.arghbox/token`: the triage token
@@ -60,8 +60,8 @@ The full text is `skill/arghbox-triage/RULES.md`. In short:
 
 The skill is ordinary Markdown instructions (`PROMPT.md`, `RULES.md`) plus a Node script with no dependencies. Any coding agent that can read files and run `node` can use it:
 
-- **Codex, and others that read `AGENTS.md`:** add a short note such as "To empty the ArghBox, follow `.claude/skills/arghbox-triage/PROMPT.md`", and make sure the agent may run `node .claude/skills/arghbox-triage/triage.mjs`.
-- **Cursor and VS Code:** the same line in your rules file, or connect the [MCP server](mcp.md) for conversational use.
+- **Codex:** it loads the skill from `.agents/skills/arghbox-triage/`, which `npx arghbox install` puts there. Ask it to "Empty the ArghBox", or type `$arghbox-triage`. The triage script reaches your site over HTTPS and Codex runs commands in a sandbox, so approve network access when Codex asks.
+- **Other agents, Cursor and VS Code:** have the agent follow `PROMPT.md` by hand, for example with a line in your `AGENTS.md` or rules file such as "To empty the ArghBox, follow `.agents/skills/arghbox-triage/PROMPT.md`", and make sure it may run `node .agents/skills/arghbox-triage/triage.mjs`. Or connect the [MCP server](mcp.md) for conversational use.
 
 The reviewer name written into the AI note is whatever the agent puts in the verdicts file.
 

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting. Please search the [open issues](https://github.com/BinaryBananaLLC/ArghBox/issues) first.
-        Ideas and questions go to the Feedback tab on [arghbox.com](https://arghbox.com/#arghbox-add). Security problems go to [private reporting](https://github.com/BinaryBananaLLC/ArghBox/security/advisories/new), not here.
+        You can also report it on the Feedback tab on [ArghBox.com](https://arghbox.com/#arghbox-bug). Security problems go to [private reporting](https://github.com/BinaryBananaLLC/ArghBox/security/advisories/new), not here.
   - type: textarea
     id: what
     attributes:
