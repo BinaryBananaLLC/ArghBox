@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const art = join(root, 'art');
 const brand = join(root, 'art', 'brand');
 const url = (p) => pathToFileURL(p).href;
-const PAPER = '#fff6e9';
+const BG = '#FFFFFF';
 mkdirSync(brand, { recursive: true });
 
 const browser = await chromium.launch();
@@ -47,16 +47,16 @@ async function svgToPng(svgFile, pngFile, scale = 2) {
 }
 /** Mark centred on a square canvas. kind: 'small' | 'full'. */
 async function icon(size, out, { svgName, markFrac, bg = null, radius = 0 }) {
-  const m = Math.round(size * markFrac);
+  const m = size >= 64 ? Math.round(size * markFrac / 16) * 16 : Math.round(size * markFrac); // whole pixels per mascot pixel
   const html = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;background:${bg || 'transparent'};border-radius:${radius}px"><img src="${url(join(art, svgName))}" width="${m}" height="${m}"></div>`;
   const buf = await shotHtml(html, size, size, 1, out);
   if (out) console.log('  ', out.replace(root, '.'), `${size}x${size}`);
   return buf;
 }
 
-// ---- lockups, banner, diagram (SVG -> 2x PNG) ----
+// ---- lockups and banner (SVG -> 2x PNG). how-it-works.png/.gif are captures of the arghbox.com machine (art/src/capture-machine.mjs). ----
 console.log('SVG -> PNG');
-for (const name of ['logo-horizontal', 'logo-horizontal-dark', 'banner', 'how-it-works']) {
+for (const name of ['logo-horizontal', 'logo-horizontal-dark', 'banner']) {
   await svgToPng(join(art, `${name}.svg`), join(art, `${name}.png`), 2);
 }
 
@@ -67,10 +67,10 @@ const png32 = await icon(32, join(brand, 'favicon-32.png'), { svgName: 'logo-mar
 const png48 = await icon(48, null, { svgName: 'logo-mark-small.svg', markFrac: 1 });
 writeFileSync(join(brand, 'favicon.ico'), buildIco([[16, png16], [32, png32], [48, png48]]));
 console.log('   ./art/brand/favicon.ico 16+32+48');
-await icon(180, join(brand, 'apple-touch-icon.png'), { svgName: 'logo-mark.svg', markFrac: 0.74, bg: PAPER });
-await icon(192, join(brand, 'icon-192.png'), { svgName: 'logo-mark.svg', markFrac: 0.74, bg: PAPER, radius: 42 });
-await icon(512, join(brand, 'icon-512.png'), { svgName: 'logo-mark.svg', markFrac: 0.74, bg: PAPER, radius: 112 });
-await icon(512, join(brand, 'icon-maskable-512.png'), { svgName: 'logo-mark.svg', markFrac: 0.56, bg: PAPER });
+await icon(180, join(brand, 'apple-touch-icon.png'), { svgName: 'logo-mark.svg', markFrac: 0.8, bg: BG });
+await icon(192, join(brand, 'icon-192.png'), { svgName: 'logo-mark.svg', markFrac: 0.8, bg: BG, radius: 42 });
+await icon(512, join(brand, 'icon-512.png'), { svgName: 'logo-mark.svg', markFrac: 0.8, bg: BG, radius: 112 });
+await icon(512, join(brand, 'icon-maskable-512.png'), { svgName: 'logo-mark.svg', markFrac: 0.6, bg: BG });
 
 // ---- social images ----
 console.log('Social');

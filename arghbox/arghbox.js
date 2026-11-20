@@ -37,8 +37,7 @@
     '.l{writing-mode:vertical-rl}[data-pos=left] .l{transform:rotate(180deg)}' +
     '.x{line-height:32px;text-align:center;font-size:20px;border-block:1px solid #fff6}' +
     '.tw :focus-visible{outline:3px solid #fff;outline-offset:-5px}' +
-    '.t svg{width:28px;padding:3px;border-radius:50%;background:#fff6e9}' +
-    '.t path{fill:var(--ac);stroke:#2b1d1a;stroke-width:2;stroke-linejoin:round}.t path:first-child{fill:#ffc83d}' +
+    '.t svg{width:28px;padding:3px;border-radius:6px;background:#fff;fill:#1E2430;shape-rendering:crispEdges}' +
     '.m{position:absolute;right:48px;width:240px;padding:10px;border-radius:10px;background:#2b1d1a;color:#fff}[data-pos=left] .m{right:auto;left:48px}';
 
   var cfg, wrap, shadow, host, tw, tabBtn, ctl, appP, prefetched;
@@ -170,9 +169,8 @@
     tabBtn.className = 't';
     tabBtn.setAttribute('aria-haspopup', 'dialog');
     var NS = 'http://www.w3.org/2000/svg', svg = tabBtn.appendChild(document.createElementNS(NS, 'svg'));
-    svg.setAttribute('viewBox', '0 0 32 32');
-    svg.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z');
-    svg.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M3 13h26v8H3zM5 21v8h22v-8M10 17h12');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M0 1h16v4H0zM1 5h14v10H1zM1 2v2h14V2zM2 5v9h12V5zM3 7h2v1H3zM5 8h1v3H4V9h1zM11 7h2v1h-2zM10 8h1v1h1v2h-2zM6 12h4v1H6zM5 13h1v1H5zM10 13h1v1h-1z');
     tabBtn.appendChild(document.createElement('span')).className = 'l';
     tabBtn.lastChild.textContent = label;
     tabBtn.onclick = function () { open({}); };

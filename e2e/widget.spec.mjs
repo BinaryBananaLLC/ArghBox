@@ -49,14 +49,13 @@ test('tab renders on the right edge by default, on the left with data-position, 
   expect(Math.round(box.x + box.width)).toBe(vp.width)
   expect(Math.abs(box.y + box.height / 2 - vp.height / 2)).toBeLessThan(2)
   await expect(tab(page)).toHaveText('Feedback')
-  // the ArghBox mark on a cream badge above the label: burst in yellow, box in the accent
+  // the ArghBox mark (the pixel box, one ink path) on a white badge above the label
   const icon = await page.evaluate(() => {
     const svg = document.querySelector('#arghbox-root').shadowRoot.querySelector('.t svg')
-    const [burst, box] = svg.querySelectorAll('path')
     const r = svg.getBoundingClientRect()
-    return { w: Math.round(r.width), h: Math.round(r.height), paths: svg.querySelectorAll('path').length, badge: getComputedStyle(svg).backgroundColor, burst: getComputedStyle(burst).fill, box: getComputedStyle(box).fill }
+    return { w: Math.round(r.width), h: Math.round(r.height), paths: svg.querySelectorAll('path').length, badge: getComputedStyle(svg).backgroundColor, ink: getComputedStyle(svg.querySelector('path')).fill }
   })
-  expect(icon).toEqual({ w: 34, h: 34, paths: 2, badge: 'rgb(255, 246, 233)', burst: 'rgb(255, 200, 61)', box: 'rgb(232, 85, 61)' })
+  expect(icon).toEqual({ w: 34, h: 34, paths: 1, badge: 'rgb(255, 255, 255)', ink: 'rgb(30, 36, 48)' })
 
   await load(page, servers, { 'data-position': 'left', 'data-offset': '30' })
   box = await page.locator('#arghbox-root .tw').boundingBox()
@@ -915,6 +914,62 @@ test('dialog semantics, focus trap, Esc, backdrop and focus return', async ({ pa
   await expect(dlg).toHaveCount(0)
 })
 
+test('a text selection dragged out of a field onto the backdrop does not close the dialog; a click there does', async ({ page, servers }, info) => {
+  test.skip(isPhone(info), 'phones show a full-screen sheet with no backdrop')
+  await load(page, servers)
+  await page.evaluate(() => ArghBox.open({ view: 'add' }))
+  const title = panel(page).getByLabel('In a few words')
+  const body = panel(page).getByLabel('Details (optional)')
+  await title.fill('test')
+  await body.fill('select me')
+  for (const field of [title, body]) {
+    const b = await field.boundingBox()
+    await page.mouse.move(b.x + b.width - 6, b.y + 12) // press in the field, select leftwards and let go over the backdrop
+    await page.mouse.down()
+    await page.mouse.move(b.x + 4, b.y + 12, { steps: 4 })
+    await page.mouse.move(40, 300, { steps: 6 })
+    await page.mouse.up()
+    await expect(panel(page)).toBeVisible()
+  }
+  await expect(title).toHaveValue('test')
+  const b = await title.boundingBox() // the other way round: pressed on the backdrop, let go in the panel
+  await page.mouse.move(40, 300)
+  await page.mouse.down()
+  await page.mouse.move(b.x + 10, b.y + 12, { steps: 6 })
+  await page.mouse.up()
+  await expect(panel(page)).toBeVisible()
+  await page.mouse.click(40, 300, { button: 'right' }) // not a click
+  await expect(panel(page)).toBeVisible()
+  await page.mouse.click(40, 300)
+  await expect(panel(page)).toHaveCount(0)
+})
+
+test('an unsent draft survives an accidental close: the tab reopens the form; Enter in the title goes on to the details, Ctrl+Enter sends', async ({ page, servers, api }) => {
+  await load(page, servers)
+  await openDialog(page)
+  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  const title = panel(page).getByLabel('In a few words')
+  await title.fill('Export to CSV')
+  await title.press('Enter')
+  await expect(panel(page).getByLabel('Details (optional)')).toBeFocused()
+  await page.keyboard.type('From the report page.')
+  // Esc while an input method is composing belongs to the input method, not the dialog
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true })))
+  await expect(panel(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(panel(page)).toHaveCount(0)
+  await tab(page).click()
+  await expect(panel(page).getByLabel('In a few words')).toHaveValue('Export to CSV')
+  await expect(panel(page).getByLabel('Details (optional)')).toHaveValue('From the report page.')
+  expect(api.requests('add').length).toBe(0)
+  await page.keyboard.press('Control+Enter')
+  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  expect(api.last('add')).toMatchObject({ title: 'Export to CSV', body: 'From the report page.' })
+  await page.keyboard.press('Escape')
+  await tab(page).click() // sent: the tab opens the list again
+  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+})
+
 test('focus is trapped in the add form and the detail view too', async ({ page, servers }, info) => {
   test.skip(info.project.name === 'webkit-phone', WEBKIT_TAB)
   await load(page, servers)
@@ -1180,7 +1235,7 @@ test('credit link: shown by default, hidden by data-credit=off and by the server
   await openDialog(page)
   const link = panel(page).getByRole('link', { name: 'Powered by ArghBox' })
   await expect(link).toHaveAttribute('href', 'https://arghbox.com/')
-  await expect(link.locator('svg.mk path')).toHaveCount(2) // the ArghBox mark next to the words
+  await expect(link.locator('svg.mk path')).toHaveCount(1) // the ArghBox mark (the pixel box) next to the words
   await expect(link).toHaveAttribute('rel', 'noopener')
   await expect(link).toHaveAttribute('target', '_blank')
   await load(page, servers, { 'data-credit': 'off' })
@@ -1649,7 +1704,7 @@ test('Trusted Types host: no innerHTML, script URLs go through the "arghbox" pol
   await page.goto(hostUrl(servers, 'trusted-types'))
   await expect(tab(page)).toBeVisible()
   // the tab icon is built with createElementNS (no innerHTML), so it renders under Trusted Types too
-  expect(await page.evaluate(() => document.querySelector('#arghbox-root').shadowRoot.querySelectorAll('.t svg path').length)).toBe(2)
+  expect(await page.evaluate(() => document.querySelector('#arghbox-root').shadowRoot.querySelectorAll('.t svg path').length)).toBe(1)
   await tab(page).click()
   await expect(card(page, 'Dark mode')).toBeVisible()
   await expect(panel(page).locator('.vote .ic svg').first()).toBeVisible()

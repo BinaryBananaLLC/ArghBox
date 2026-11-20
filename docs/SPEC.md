@@ -738,7 +738,10 @@ window.ArghBox = {
 - Fetches `i18n/<lang>.json` (lang matched against `LANGS`: exact, then the part before `-`,
   else `en`) and `api.php?action=list` in parallel when it mounts.
 - **Dialog**: `role="dialog"`, `aria-modal="true"`, labelled by its title, focus trapped, Esc and
-  the backdrop close it, focus returns to the element that opened it. Desktop: a panel of about
+  a click on the backdrop close it, focus returns to the element that opened it. A backdrop click
+  is a primary-button press and release both on the backdrop: a text selection dragged out of a
+  field, or a press on the backdrop let go in the panel, does not close it. Esc and Tab pressed
+  while an input method composes (Chinese, Japanese, Korean) are left to it. Desktop: a panel of about
   420 px on the tab's side; phones (< 640 px): full-screen sheet. Body scroll of the host page
   is not locked in a way that jumps (no layout shift).
 - **Views**:
@@ -785,6 +788,12 @@ window.ArghBox = {
     - Similarity is computed in the browser from the loaded list, with no network: titles,
       aliases, tags and the start of the body; lowercase, accents and punctuation stripped,
       word overlap plus prefix matches.
+    - Enter in the title moves on to the details (it does not send half a report); Ctrl+Enter
+      or Cmd+Enter sends from any field. The details box grows with the text (up to half the
+      viewport height).
+    - The draft (type, title, details) is kept while the page is open. Closed with an unsent
+      draft on screen, the dialog reopens on the form when opened with no route (the tab,
+      `ArghBox.open()`); a route (`#arghbox`, a view) still wins. Sending clears the draft.
   - Thanks: "Your argh is in the box." (pending) or "Your argh is up." (publish mode), with "Thanks for helping
     us improve {site}!".
   - **Report** (section 6b): the detail view of a visitor entry (never `source: owner`) has a small "Report"

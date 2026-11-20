@@ -12,10 +12,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Changed
 
 - The demo site in `demo/` is now Contoso Tasks (was Pocket Maps). `npm run dev` serves it with the real PHP box as before.
+- The feedback form is kinder to an unsent report: when the dialog was closed with a draft on screen, the tab reopens it on the form; Enter in the title moves on to the details instead of sending; Ctrl+Enter (Cmd+Enter) sends; the details box grows with the text.
+- Buttons, tabs, chips and choices show hover feedback with a mouse, and the Send button shows a busy cursor while sending.
 - `npx arghbox install` needs no flags: it finds the web root (`public`, `public_html`, `static`, `www`, `htdocs`, or `.`) and installs the triage skill by default (`--no-skill` skips it).
 
 ### Fixed
 
+- Selecting text in the feedback form with the mouse and letting go outside the dialog no longer closes it. Only a click that starts and ends on the backdrop closes the dialog.
+- Esc pressed to cancel an input method (Chinese, Japanese, Korean) no longer closes the dialog.
 - The dialog title no longer shows a focus ring when the board opens without a click, as on the mobile app page (`app.html`).
 
 ## [0.1.1] - 2026-11-18

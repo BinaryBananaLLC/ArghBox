@@ -32,6 +32,8 @@ No other feedback widget does all four.
 
 ### How the AI part works
 
+<img src="art/how-it-works.gif" alt="Feedback notes drop into a funnel marked AI on top of the ArghBox mascot. Spam falls into a rejected bin, duplicates merge into one entry, and the tidy ideas and bugs ride a belt into a clean public list with Planned and In progress labels." width="100%">
+
 Open Claude Code or Codex in your site's folder and say:
 
 ```

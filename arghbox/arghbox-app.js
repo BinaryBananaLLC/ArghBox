@@ -9,7 +9,7 @@
   var CSS =
     '.ab{--bg:var(--arghbox-bg,#fff);--fg:var(--arghbox-fg,#2b1d1a);--mut:var(--arghbox-muted,#6e5d56);--line:var(--arghbox-line,#eee3d6);' +
     '--ib:var(--arghbox-border,#8f7c73);--card:var(--arghbox-card,#fff6e9);--ring:#1a56db;' +
-    '--act:var(--acs);--shadow:0 14px 44px rgba(43,29,26,.3);--tint:color-mix(in srgb,var(--ac) 10%,var(--bg))}' +
+    '--act:var(--acs);--shadow:0 14px 44px rgba(43,29,26,.3);--tint:color-mix(in srgb,var(--ac) 10%,var(--bg));--hov:color-mix(in srgb,var(--fg) 8%,transparent)}' +
     '.ab[data-dark]{--bg:var(--arghbox-bg,#1f1613);--fg:var(--arghbox-fg,#fff6e9);--mut:var(--arghbox-muted,#b8a8a0);--line:var(--arghbox-line,#3b2d28);' +
     '--ib:var(--arghbox-border,#8a7870);--card:var(--arghbox-card,#2c211d);--ring:#8ab4ff;' +
     '--act:color-mix(in srgb,var(--ac) 62%,#fff);--shadow:0 14px 44px rgba(0,0,0,.65);--tint:color-mix(in srgb,var(--ac) 16%,var(--bg))}' +
@@ -37,10 +37,12 @@
     '.sc{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 20px 16px}' +
     '.ft{touch-action:none;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}' +
     '.pri,.sec{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border-radius:12px;font-weight:600;text-align:center}' +
-    '.pri{background:var(--acs);color:#fff}.pri[disabled]{opacity:.65;cursor:default}' +
+    '.pri{background:var(--acs);color:#fff}.pri[disabled]{opacity:.65;cursor:progress}' +
+    '@media(hover:hover){:where(.ib,.sec,.chip,.vote,.srt button):hover,:where(.ty:hover span){background:var(--hov)}' +
+    '.pri:not([disabled]):hover{background:color-mix(in srgb,var(--acs) 85%,#000)}.tabs button:hover,.rp:hover{color:var(--fg)}}' +
     '.sec{border:1.5px solid var(--ib)}' +
     '.cr{text-align:center;font-size:12px}.cr a{color:var(--mut)}' +
-    '.mk{width:16px;height:16px;margin-right:5px;vertical-align:-3px}.mk path{fill:#e8553d;stroke:var(--fg);stroke-width:2.4;stroke-linejoin:round}.mk path:first-child{fill:#ffc83d}' +
+    '.mk{width:16px;height:16px;margin-right:5px;vertical-align:-3px;shape-rendering:crispEdges;fill:var(--fg)}' +
     '.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}' +
     '.tabs{display:flex;flex:1;background:var(--card);border-radius:12px;padding:3px;gap:3px;min-width:200px}' +
     '.tabs button{flex:1;min-height:44px;border-radius:9px;font-weight:600;color:var(--mut);text-align:center}' +
@@ -84,6 +86,7 @@
     '.ty input:focus-visible+span{outline:2px solid var(--ring);outline-offset:2px}' +
     'label{display:block;margin:12px 0 4px;font-weight:600}' +
     '.in{display:block;width:100%;padding:10px 12px;border:1.5px solid var(--ib);border-radius:12px;background:var(--bg);font-size:16px;line-height:1.4;resize:vertical}' +
+    'textarea.in{field-sizing:content;min-height:calc(4lh + 23px);max-height:50vh}' +
     '.in[aria-invalid=true]{border-color:#c0392b}' +
     '.fe{margin:4px 0 0;color:#b3261e;font-size:13px;font-weight:500}.ab[data-dark] .fe{color:#ff9b8f}' +
     '.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}' +
@@ -375,17 +378,17 @@
     s.appendChild(g);
     return s;
   }
-  // the ArghBox mark (art/logo-mark-small.svg) for the credit
+  // the ArghBox mark for the credit
   function mark() {
     var NS = 'http://www.w3.org/2000/svg', g = document.createElementNS(NS, 'svg');
-    g.setAttribute('viewBox', '0 0 32 32');
+    g.setAttribute('viewBox', '0 0 16 16');
     g.setAttribute('class', 'mk');
     g.setAttribute('aria-hidden', 'true');
-    ['M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z', 'M3 13h26v8H3zM5 21v8h22v-8M10 17h12'].forEach(function (d) {
-      g.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', d);
-    });
+    g.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M0 1h16v4H0zM1 5h14v10H1zM1 2v2h14V2zM2 5v9h12V5zM3 7h2v1H3zM5 8h1v3H4V9h1zM11 7h2v1h-2zM10 8h1v1h1v2h-2zM6 12h4v1H6zM5 13h1v1H5zM10 13h1v1h-1z');
     return g;
   }
+  // a key an input method is composing with (Safari: keyCode 229)
+  function ime(ev) { return ev.isComposing || ev.keyCode === 229; }
   function deepActive() {
     var a = document.activeElement;
     while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
@@ -1152,7 +1155,11 @@
       F.body.addEventListener('input', function () { d.body = F.body.value; fe('body', ''); });
       paintType();
 
-      var form = h('form', { class: 'vw', novalidate: true, onsubmit: function (ev) {
+      // Enter in the title goes on to the details; Ctrl/Cmd+Enter sends
+      var form = h('form', { class: 'vw', novalidate: true, onkeydown: function (ev) {
+        if (ev.key !== 'Enter' || ime(ev)) return;
+        if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); F.submit.click(); } else if (ev.target === F.title) { ev.preventDefault(); F.body.focus(); }
+      }, onsubmit: function (ev) {
         ev.preventDefault();
         banner('');
         var title = F.title.value.replace(/\s+/g, ' ').trim();
@@ -1285,7 +1292,9 @@
 
     function go(o) {
       S.want = o.id || 0;
-      if (o.view === 'add') { if (o.type) S.draft.type = o.type; setView('add'); } else {
+      var resume = // reopened with an unsent draft on screen
+        !o.view && !o.type && S.view === 'add' && !!(S.draft.title || S.draft.body);
+      if (o.view === 'add' || resume) { if (o.type) S.draft.type = o.type; setView('add'); } else {
         if (o.type) S.tab = o.type === 'bug' ? 'bugs' : 'ideas';
         setView('list');
         tryWant();
@@ -1300,7 +1309,7 @@
       return out;
     }
     function onKey(ev) {
-      if (!S.isOpen) return;
+      if (!S.isOpen || ime(ev)) return;
       if (ev.key === 'Escape') {
         ev.stopPropagation();
         var q = S.refs.q;
@@ -1330,7 +1339,12 @@
       S.live = h('div', { class: 'sr', role: 'status', 'aria-live': 'polite' });
       S.alert = h('div', { class: 'sr', role: 'alert', 'aria-live': 'assertive' });
       S.panel = h('div', { class: 'panel', role: 'dialog', 'aria-modal': 'true', tabindex: '-1', 'aria-busy': 'true' }, [S.live, S.alert]);
-      S.ov = h('div', { class: 'ov', onclick: function (ev) { if (ev.target === S.ov) close(); } }, [S.panel]);
+      // closes only on a press and release both on the backdrop, not a text selection dragged out of a field
+      S.ov = h('div', {
+        class: 'ov', onclick: function () { if (S.bd) close(); },
+        onpointerdown: function (ev) { S.bd = ev.target === S.ov && !ev.button; },
+        onpointerup: function (ev) { S.bd = S.bd && ev.target === S.ov; }
+      }, [S.panel]);
       // the page behind must not scroll while the dialog is open (wheel over the backdrop, header or footer)
       S.ov.addEventListener('wheel', function (ev) { if (!ev.composedPath().some(function (n) { return n.classList && n.classList.contains('sc'); })) ev.preventDefault(); }, { passive: false });
       wrap.appendChild(S.ov);
