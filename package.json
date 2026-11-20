@@ -1,6 +1,6 @@
 {
   "name": "arghbox",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The complaint box your AI empties for you: a drop-in feedback widget with a PHP backend for shared hosting and AI triage by your own Claude Code.",
   "license": "MIT",
   "type": "module",

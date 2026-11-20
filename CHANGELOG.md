@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-20
+
 ### Added
 
 - **Live demo on GitHub Pages** (`https://binarybananallc.github.io/ArghBox/`): Contoso Tasks, a made-up site with the real widget, the real admin page (password `demo`) and the mobile app page in a phone, next to the messages a native app receives. Pages runs no PHP, so `demo/backend.js` answers the API in the browser and keeps the box in `localStorage`. `npm run demo` serves the same build locally. The **Demo** workflow publishes it after each release.

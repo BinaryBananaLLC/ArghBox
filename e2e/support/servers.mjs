@@ -16,7 +16,7 @@
  * Host pages are templates: the marker <!--ARGHBOX--> is replaced by the widget <script> tag. Query parameters
  * of the page URL configure it: every `data-*` parameter becomes an attribute (data-position=left), `api=cross`
  * sets data-api to the cross-origin fake API, `widget=0` leaves the widget out, `v=` is the ?v= of the script
- * URL (default 0.1.1), `htmllang=pl` sets <html lang>. Use hostUrl() to build such URLs.
+ * URL (default 0.1.2), `htmllang=pl` sets <html lang>. Use hostUrl() to build such URLs.
  *
  * To run a spec against another backend (the real PHP server), pass `apiHandler: null` and `arghboxDir`
  * options to startServers, or start your own server and use only the host pages (`startStaticServer`).
@@ -42,7 +42,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') }
 
 export function scriptTag(params, apiUrl) {
-  const v = params.get('v') || '0.1.1'
+  const v = params.get('v') || '0.1.2'
   const attrs = []
   for (const [k, val] of params) if (k.startsWith('data-')) attrs.push(`${k}="${escapeAttr(val)}"`)
   if (params.get('api') === 'cross' && apiUrl) attrs.push(`data-api="${escapeAttr(apiUrl)}"`)

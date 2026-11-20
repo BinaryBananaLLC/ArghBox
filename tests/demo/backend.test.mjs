@@ -36,7 +36,7 @@ describe('the seed', () => {
     assert.equal(r.json.turnstile_site_key, '1x00000000000000000000AA');
     assert.equal(r.json.max_links, 2);
     assert.equal(r.json.credit, true);
-    assert.equal(r.json.version, '0.1.1');
+    assert.equal(r.json.version, '0.1.2');
     assert.equal(r.json.entries.length, 13);
     const first = r.json.entries[0];
     assert.equal(first.title, 'Recurring tasks');
@@ -338,7 +338,7 @@ describe('admin sign-in', () => {
     const anon = loadBackend();
     const a = (await anon.call('health')).json;
     assert.equal(a.ok, true);
-    assert.equal(a.version, '0.1.1');
+    assert.equal(a.version, '0.1.2');
     assert.ok(!('config_location' in a));
     assert.ok('config_location' in (await t.admin('health')).json);
   });

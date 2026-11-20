@@ -163,7 +163,7 @@ export function createFakeApi(options = {}) {
         const tag_counts = Object.entries(counts).map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || (a.tag < b.tag ? -1 : 1))
         const voted = api.entries.filter((x) => api.voters.get(x.id)?.has(voter)).map((x) => x.id)
         return send(res, 200, {
-          ok: true, site: { name: 'Demo Site' }, welcome: api.sw.welcome, version: '0.1.1', turnstile_site_key: api.sw.turnstileKey, moderation: api.sw.moderation,
+          ok: true, site: { name: 'Demo Site' }, welcome: api.sw.welcome, version: '0.1.2', turnstile_site_key: api.sw.turnstileKey, moderation: api.sw.moderation,
           credit: api.sw.credit, contact: api.sw.contact, app_pass: api.sw.appPass, entries: listed, tag_counts, voted,
         })
       }
@@ -226,7 +226,7 @@ export function createFakeApi(options = {}) {
         return send(res, 200, { ok: true, entries: out })
       }
       case 'health':
-        return send(res, 200, { ok: true, version: '0.1.1', php: 'fake', sqlite: 'fake', config: 'found' })
+        return send(res, 200, { ok: true, version: '0.1.2', php: 'fake', sqlite: 'fake', config: 'found' })
       default:
         return error(res, 'not_found')
     }

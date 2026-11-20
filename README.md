@@ -77,7 +77,7 @@ About 10 minutes. You need web hosting with PHP 8.1 or newer (almost every share
 3. **Add one line to your pages, then deploy:**
 
    ```html
-   <script src="/arghbox/arghbox.js?v=0.1.1" defer></script>
+   <script src="/arghbox/arghbox.js?v=0.1.2" defer></script>
    ```
 
 That's it. The Feedback tab is live. To let your AI empty the box, see [docs/triage.md](docs/triage.md).
