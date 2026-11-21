@@ -1,6 +1,6 @@
 # ArghBox in mobile apps
 
-Your app can show the whole feedback board in a WebView. Players and users see the list, search, vote, add their own, see "Your arghs" and report posts. There is nothing to sign in to, and you write no native screens.
+Your app can show the whole feedback board in a WebView. Players and users see the list, search, vote, add their own, see "Your posts" and report posts. There is nothing to sign in to, and you write no native screens.
 
 This page is for developers who already installed ArghBox on their site (see [install.md](install.md)).
 

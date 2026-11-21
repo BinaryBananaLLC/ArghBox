@@ -206,7 +206,7 @@ describe('adding and following an entry', () => {
       [{ title: '   a   b   ' }, 'title', 'The title is too short (at least 4 characters).'],
       [{ title: '!!!!!!' }, 'title', 'The title needs at least one letter or digit.'],
       [{ title: 'x'.repeat(121) }, 'title', 'The title is too long (at most 120 characters).'],
-      [{ title: 12345 }, 'title', 'Give your argh a title.'],
+      [{ title: 12345 }, 'title', 'Please give it a title.'],
       [{ type: 'rant' }, 'type', 'The type must be idea, bug or question.'],
       [{ body: 'y'.repeat(2001) }, 'body', 'The details are too long (at most 2000 characters).'],
       [{ body: 'a http://a.com b https://b.com c www.c.com' }, 'body', 'Too many links. At most 2 allowed.'],

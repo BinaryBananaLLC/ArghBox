@@ -125,7 +125,7 @@ Show the same board inside your iOS, Android, React Native or Flutter app with a
   <a href="https://binarybananallc.github.io/ArghBox/#apps">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/images/mobile-app-dark.png">
-      <img src="docs/images/mobile-app.png" alt="The ArghBox board inside a phone app: ideas with votes, Planned and In progress labels, and an Add your argh button" width="240">
+      <img src="docs/images/mobile-app.png" alt="The ArghBox board inside a phone app: ideas with votes, Planned and In progress labels, and an Add an idea, bug or question button" width="240">
     </picture>
   </a>
 </p>

@@ -15,7 +15,7 @@
     '--act:color-mix(in srgb,var(--ac) 62%,#fff);--shadow:0 14px 44px rgba(0,0,0,.65);--tint:color-mix(in srgb,var(--ac) 16%,var(--bg))}' +
     '.ab *{box-sizing:border-box}' +
     '.ov{position:fixed;inset:0;overscroll-behavior:contain;z-index:calc(var(--z,2147483000) + 1);background:rgba(31,22,19,.4);font:400 14px/1.45 ' + FONT + ';color:var(--fg)}' +
-    '.panel{position:absolute;top:12px;bottom:12px;right:12px;width:420px;max-width:calc(100% - 24px);display:flex;flex-direction:column;' +
+    '.panel{position:absolute;top:calc(12px + var(--sat,0px));bottom:calc(12px + var(--sab,0px));right:12px;width:420px;max-width:calc(100% - 24px);display:flex;flex-direction:column;' +
     'background:var(--bg);color:var(--fg);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;outline:0}' +
     '[data-pos=left] .panel{right:auto;left:12px}' +
     ':where(.panel button,.panel input,.panel textarea){font:inherit;color:inherit;margin:0}' +
@@ -38,11 +38,12 @@
     '.ft{touch-action:none;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}' +
     '.pri,.sec{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border-radius:12px;font-weight:600;text-align:center}' +
     '.pri{background:var(--acs);color:#fff}.pri[disabled]{opacity:.65;cursor:progress}' +
+    '.pri[aria-busy=true]::before{content:"";flex:none;width:14px;height:14px;margin-right:10px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%}' +
     '@media(hover:hover){:where(.ib,.sec,.chip,.vote,.srt button):hover,:where(.ty:hover span){background:var(--hov)}' +
     '.pri:not([disabled]):hover{background:color-mix(in srgb,var(--acs) 85%,#000)}.tabs button:hover,.rp:hover{color:var(--fg)}}' +
     '.sec{border:1.5px solid var(--ib)}' +
     '.cr{text-align:center;font-size:12px}.cr a{color:var(--mut)}' +
-    '.mk{width:16px;height:16px;margin-right:5px;vertical-align:-3px;shape-rendering:crispEdges;fill:var(--fg)}' +
+    '.mk{width:16px;height:16px;margin-right:5px;vertical-align:-3px;shape-rendering:crispEdges}' +
     '.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}' +
     '.tabs{display:flex;flex:1;background:var(--card);border-radius:12px;padding:3px;gap:3px;min-width:200px}' +
     '.tabs button{flex:1;min-height:44px;border-radius:9px;font-weight:600;color:var(--mut);text-align:center}' +
@@ -92,28 +93,28 @@
     '.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}' +
     '.sim{margin-top:14px;padding:4px 12px;border-radius:12px;background:var(--card)}' +
     '.sm{flex:1;min-width:0}.sim h3{margin-top:10px}.sim .it:last-child{border:0}' +
-    '.ctx{margin:14px 0 0;color:var(--mut);font-size:13px}' +
-    '.dt .body{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}' +
+        '.dt .body{white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0}' +
     '.cm{margin:8px 0;padding:10px 12px;border-left:3px solid var(--acs);background:var(--card);border-radius:0 10px 10px 0}' +
     '.cm time{display:block;font-size:12px;color:var(--mut);margin-bottom:2px}.cm p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}' +
-    '.al{margin:0;padding-left:18px}.al,.sub,.meta,.ctx,.empty,.fe,.banner{overflow-wrap:anywhere}' +
+    '.al{margin:0;padding-left:18px}.al,.sub,.meta,.empty,.fe,.banner{overflow-wrap:anywhere}' +
     '.vbig{display:flex;align-items:center;gap:12px;margin:14px 0}' +
     '.vbig .vote{min-height:56px}' +
     '.thx{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:36px 8px}.thx p{margin:0;max-width:30ch;color:var(--mut);text-wrap:balance}.thx .ok{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:var(--tint);color:var(--act)}.thx .ok svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}' +
     '.panel[aria-busy=true]{align-items:center;justify-content:center}.panel[aria-busy=true]::after{content:"";width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--act);border-radius:50%}' +
     '.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}' +
     '@media(prefers-reduced-motion:no-preference){' +
-    '.panel[aria-busy=true]::after{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}' +
+    '.panel[aria-busy=true]::after,.pri[aria-busy=true]::before{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}' +
     '.ov{animation:fade .18s ease-out}.panel{animation:slide .22s ease-out}' +
     '@keyframes fade{from{background-color:transparent}}@keyframes slide{from{transform:translateX(24px)}}' +
     '[data-pos=left] .panel{animation-name:slidel}@keyframes slidel{from{transform:translateX(-24px)}}}' +
-    '@media(max-width:639px){.chips{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:4px;margin-right:-20px;padding-right:20px}.chip{flex:none;min-height:44px}.ov{background:var(--bg)}.panel{inset:0!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
+    '@media(max-width:639px),(max-height:480px){.chips{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:4px;margin-right:-20px;padding-right:20px}.chip{flex:none;min-height:44px}.ov{background:var(--bg)}.panel{inset:var(--sat,0px) 0 var(--sab,0px)!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
     '.hd{padding-top:calc(10px + env(safe-area-inset-top))}' +
     '@media(prefers-reduced-motion:no-preference){.panel,[data-pos=left] .panel{animation-name:up}@keyframes up{from{transform:translateY(24px)}}}}' +
+    '@media(max-height:480px){.panel{overflow-y:auto}.vw,.sc{flex:none;overflow:visible}.hd,.ft{touch-action:auto}}' +
     '.cr a{display:inline-block;padding:8px 6px}' +
     '.rpt{margin:6px 0 10px}.rp{min-height:44px;padding:0 4px;color:var(--mut);text-decoration:underline}' +
     '.rs{flex-direction:column;min-width:0}.rs .ty{flex:none}legend{padding:0;margin:0 0 6px;font-weight:600}' +
-    '.pg .ov{background:var(--bg)}.pg .panel{inset:0!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
+    '.pg .ov{background:var(--bg)}.pg .panel{inset:var(--sat,0px) 0 var(--sab,0px)!important;width:auto;max-width:none;border-radius:0;box-shadow:none}' +
     '.pg .hd,.pg .sc,.pg .ft{--pl:max(20px,env(safe-area-inset-left),calc((100% - 640px)/2));--pr:max(20px,env(safe-area-inset-right),calc((100% - 640px)/2));padding-left:var(--pl);padding-right:var(--pr)}' +
     '.pg .hd{padding-top:calc(10px + env(safe-area-inset-top));padding-right:calc(var(--pr) - 12px)}.pg .hd.bk{padding-left:calc(var(--pl) - 12px)}' +
     '@media print{.ov{display:none}}';
@@ -378,13 +379,19 @@
     s.appendChild(g);
     return s;
   }
-  // the ArghBox mark for the credit
+  // the ArghBox mascot in its colours (art/logo-mark-small.svg) for the credit
   function mark() {
     var NS = 'http://www.w3.org/2000/svg', g = document.createElementNS(NS, 'svg');
     g.setAttribute('viewBox', '0 0 16 16');
     g.setAttribute('class', 'mk');
     g.setAttribute('aria-hidden', 'true');
-    g.appendChild(document.createElementNS(NS, 'path')).setAttribute('d', 'M0 1h16v4H0zM1 5h14v10H1zM1 2v2h14V2zM2 5v9h12V5zM3 7h2v1H3zM5 8h1v3H4V9h1zM11 7h2v1h-2zM10 8h1v1h1v2h-2zM6 12h4v1H6zM5 13h1v1H5zM10 13h1v1h-1z');
+    [['#38BDF8', 'M1 2h14v1H1z'], ['#0EA5E9', 'M1 3h14v1H1z'], ['#7DD3FC', 'M2 5h12v9H2z'],
+      ['#1E2430', 'M0 1h16v4H0zM1 5h14v10H1zM1 2v2h14V2zM2 5v9h12V5zM3 7h2v1H3zM5 8h1v3H4V9h1zM11 7h2v1h-2zM10 8h1v1h1v2h-2zM6 12h4v1H6zM5 13h1v1H5zM10 13h1v1h-1z']
+    ].forEach(function (p) {
+      var e = g.appendChild(document.createElementNS(NS, 'path'));
+      e.setAttribute('fill', p[0]);
+      e.setAttribute('d', p[1]);
+    });
     return g;
   }
   // a key an input method is composing with (Safari: keyCode 229)
@@ -487,7 +494,7 @@
       strings: null, en: null, pass: null, passExp: 0, passP: null, refs: {}, scroll: 0, detailId: 0
     };
     var tone = cfg.tone === 'neutral' ? 'neutral' : 'funny';
-    var stringsP = null, listP = null, tsP = null, tsBox = null, tsWid = null, tsPending = null;
+    var stringsP = null, listP = null, tsP = null, tsBox = null, tsPending = null;
 
     function t(key, vars) { return translate(S.strings, S.en, cfg.lang, tone, key, vars); }
     function siteName() { return S.site.name || window.location.hostname; }
@@ -640,60 +647,47 @@
       tsP.catch(function () { tsP = null; });
       return tsP;
     }
+    // The challenge box is a light-DOM child of #arghbox-root (Turnstile fails in shadow roots), shown through the
+    // footer's <slot name="ts"> only while Cloudflare needs the visitor. Unslotted, it is not rendered at all.
     function tsShow(on) {
-      if (!tsBox) return;
-      if (on && !S.isOpen) on = false; // a late challenge must never pop up over the host page after the dialog closed
-      var small = pg || window.innerWidth < 640, side = cfg.position === 'left' ? 'left' : 'right';
-      tsBox.style.display = on ? 'block' : 'none';
-      if (on) {
-        tsBox.style.left = tsBox.style.right = 'auto';
-        if (small) { tsBox.style.left = '50%'; tsBox.style.transform = 'translateX(-50%)'; } else { tsBox.style[side] = '24px'; tsBox.style.transform = 'none'; }
-      }
+      S.tsAsk = on = !!(on && tsBox && S.isOpen);
+      if (tsBox) tsBox.slot = on ? 'ts' : '';
+      if (S.wait) S.wait();
     }
-    // Settles the CURRENT pending challenge (callbacks of an older render still land here) and stops its timer.
-    function tsSettle(tok, err) {
-      var p = tsPending;
-      tsShow(false);
-      if (!p) return;
+    // Each challenge gets a fresh widget, removed once settled: nothing stays behind in the host's DOM.
+    function tsSettle(p, tok, err) {
+      if (!p || tsPending !== p) return; // a callback of an older challenge
       tsPending = null;
       clearTimeout(p.timer);
+      tsShow(false);
+      setTimeout(function () {
+        try { window.turnstile.remove(p.w); } catch (e) { }
+        p.b.remove();
+        if (tsBox === p.b) tsBox = null;
+      });
       if (err) p.reject(err); else p.resolve(tok);
     }
-    function tsCancel() {
-      var had = !!tsPending;
-      tsSettle(null, { code: 'cancelled' });
-      try { if (had && tsWid != null && window.turnstile) window.turnstile.reset(tsWid); } catch (e) { }
-    }
+    function tsCancel() { tsSettle(tsPending, null, { code: 'cancelled' }); }
     function tsToken() {
       return tsLoad().catch(function () { throw { code: 'turnstile_unavailable' }; }).then(function (ts) {
         return new Promise(function (resolve, reject) {
-          if (tsPending) tsSettle(null, { code: 'cancelled' });
-          if (tsBox && !tsBox.isConnected) { // the host swapped its <body>: the old box and widget are gone
-            try { if (tsWid != null) ts.remove(tsWid); } catch (e) { }
-            tsBox = null;
-            tsWid = null;
-          }
-          if (!tsBox) {
-            tsBox = document.createElement('div');
-            tsBox.id = 'arghbox-turnstile';
-            tsBox.style.cssText = 'position:fixed;bottom:92px;width:300px;height:65px;display:none;z-index:' + (cfg.z + 2);
-            document.body.appendChild(tsBox);
-          }
-          tsPending = { resolve: resolve, reject: reject, timer: setTimeout(function () { tsSettle(null, { code: 'turnstile_failed' }); }, 120000) };
-          if (tsWid == null) {
-            tsWid = ts.render(tsBox, {
-              sitekey: S.key, action: 'arghbox', appearance: 'interaction-only', execution: 'execute',
-              theme: wrap.hasAttribute && wrap.hasAttribute('data-dark') ? 'dark' : 'light',
-              callback: function (tok) { tsSettle(tok); },
-              'error-callback': function () { tsSettle(null, { code: 'turnstile_failed' }); },
-              'timeout-callback': function () { tsSettle(null, { code: 'turnstile_failed' }); },
-              'before-interactive-callback': function () { tsShow(true); },
-              'after-interactive-callback': function () { tsShow(false); }
-            });
-          } else {
-            ts.reset(tsWid);
-          }
-          ts.execute(tsWid);
+          tsCancel();
+          var p = tsPending = { resolve: resolve, reject: reject }, no = function () { tsSettle(p, null, { code: 'turnstile_failed' }); };
+          p.timer = setTimeout(no, 120000);
+          p.b = tsBox = h('div', { id: 'arghbox-turnstile' });
+          tsBox.style.cssText = 'display:block!important;width:100%!important;min-height:65px!important'; // CSSOM, which a strict style-src allows
+          shadow.host.appendChild(tsBox);
+          p.w = ts.render(tsBox, {
+            sitekey: S.key, action: 'arghbox', appearance: 'interaction-only', execution: 'execute',
+            size: window.innerWidth < 360 ? 'compact' : 'flexible',
+            theme: wrap.hasAttribute && wrap.hasAttribute('data-dark') ? 'dark' : 'light',
+            callback: function (tok) { tsSettle(p, tok); },
+            'error-callback': no,
+            'timeout-callback': no,
+            'before-interactive-callback': function () { if (tsPending === p) tsShow(true); },
+            'after-interactive-callback': function () { if (tsPending === p) tsShow(false); }
+          });
+          ts.execute(p.w);
         });
       });
     }
@@ -753,6 +747,7 @@
         closeBtn()
       ]);
     }
+    function foot(kids) { return h('div', { class: 'ft' }, [h('slot', { name: 'ts' })].concat(kids)); }
     function credit() {
       var a = [];
       if (S.contact) a.push(h('a', { href: S.contact, target: '_blank', rel: 'noopener', text: t('contact') }));
@@ -875,6 +870,7 @@
         var none = S.q || S.tag ? t('list.noresults') : S.tab === 'bugs' ? t('list.empty.bugs') : t('list.empty');
         box.appendChild(h('div', { class: 'empty' }, [h('p', { text: none }), S.q ? h('button', { type: 'button', class: 'lk', text: t('list.noresults.add'), onclick: function () {
           S.draft.title = S.q;
+          if (S.tab === 'bugs') S.draft.type = 'bug';
           setView('add');
         } }) : null]));
         return;
@@ -998,7 +994,7 @@
       paintChips(); paintMine(); paintList();
       return {
         hd: header(t('dialog.title'), t('dialog.subtitle', { site: siteName() })),
-        vw: h('div', { class: 'vw' }, [R.sc, h('div', { class: 'ft' }, [
+        vw: h('div', { class: 'vw' }, [R.sc, foot([
           h('button', { type: 'button', class: 'pri', onclick: function () { setView('add'); }, text: t('list.add') }),
           credit()
         ])]),
@@ -1031,7 +1027,7 @@
           return h('div', { class: 'cm' }, [h('time', { datetime: c.at, text: fmtDate(c.at, cfg.lang) }), h('p', { dir: 'auto' }, rich(c.body))]);
         }))) : null
       ]);
-      return { hd: header(e.title, '', back), vw: h('div', { class: 'vw' }, [sc, h('div', { class: 'ft' }, [credit()])]) };
+      return { hd: header(e.title, '', back), vw: h('div', { class: 'vw' }, [sc, foot([credit()])]) };
     }
 
     function reportBox(e) {
@@ -1051,6 +1047,7 @@
           if (!sel) { banner(t('report.pick')); radios[0].firstChild.focus(); return; }
           banner('');
           send.disabled = true;
+          send.setAttribute('aria-busy', 'true');
           send.textContent = t('add.sending');
           withPass(function (pass) {
             return call('report', { body: { pass: pass, voter: voter(), id: e.id, reason: sel } });
@@ -1067,6 +1064,7 @@
             say(S.note);
           }).catch(function (err) {
             send.disabled = false;
+            send.removeAttribute('aria-busy');
             send.textContent = t('report.send');
             fail(err);
           });
@@ -1113,8 +1111,8 @@
       F.et = h('p', { class: 'fe', id: 'e-title', hidden: true });
       F.eb = h('p', { class: 'fe', id: 'e-body', hidden: true });
       F.sim = h('div', { class: 'sim', hidden: true });
-      F.ctx = h('p', { class: 'ctx' });
-      F.submit = h('button', { type: 'submit', class: 'pri', text: t('add.submit') });
+      F.submit = h('button', { type: 'submit', class: 'pri' });
+      F.hd = header('', t('add.subtitle', { site: siteName() }), back);
 
       function fe(name, msg) {
         var inp = F[name], p = name === 'title' ? F.et : F.eb;
@@ -1125,11 +1123,17 @@
         if (msg) inp.setAttribute('aria-describedby', p.id); else inp.removeAttribute('aria-describedby');
       }
       function paintType() {
+        F.hd.querySelector('h2').textContent = t('add.title.' + d.type);
         F.title.setAttribute('placeholder', t('add.ph.' + d.type));
-        F.ctx.textContent = t(d.type === 'bug' ? 'add.context.bug' : 'add.context', {
-          page: ctx.page || t('ctx.nopage'), lang: ctx.lang || t('ctx.unknown'), browser: ctx.browser || t('ctx.unknown'), os: ctx.os || t('ctx.unknown'), screen: t('screen.' + ctx.screen)
-        });
+        F.body.setAttribute('placeholder', t('add.ph.body.' + d.type));
+        if (!F.submit.disabled) F.submit.textContent = t('add.submit.' + d.type);
         paintSim();
+      }
+      // the button says what the visitor waits for: the robot check, a tick in its box, the upload
+      function busy(on, key) {
+        F.submit.disabled = on;
+        F.submit.setAttribute('aria-busy', on && key !== 'add.verify');
+        F.submit.textContent = t(key || 'add.submit.' + d.type);
       }
       function simItem(e) {
         var closed = isClosed(e), last = e.comments && e.comments.length ? e.comments[e.comments.length - 1].body : '';
@@ -1165,12 +1169,14 @@
         var title = F.title.value.replace(/\s+/g, ' ').trim();
         if (title.length < 4) { fe('title', t('err.title_short')); F.title.focus(); return; }
         if (countLinks(title, F.body.value) > S.maxLinks) { fe('title', t('err.links', { n: S.maxLinks })); F.title.focus(); return; }
-        F.submit.disabled = true;
-        F.submit.textContent = t('add.sending');
+        S.wait = function () { busy(true, S.tsAsk ? 'add.verify' : 'add.checking'); };
+        S.wait();
         var type = d.type;
         // The server drops forms filled in under ~2.5 s as robots (silently). A fast human gets a short wait, not a lost report.
         var pause = new Promise(function (go) { setTimeout(go, Math.max(0, 2700 - (Date.now() - t0))); });
         withPass(function (pass) {
+          S.wait = null;
+          busy(true, 'add.sending');
           return pause.then(function () { return call('add', { body: { pass: pass, voter: voter(), type: type, title: title, body: F.body.value, context: ctx, hp: F.hp.value, elapsed_ms: Date.now() - t0 } }); });
         }).then(function (r) {
           var en = r.entry || {};
@@ -1188,8 +1194,8 @@
           say(t(S.thanks === 'published' ? 'thanks.published' : 'thanks.pending'));
           loadMine().then(function () { paintMine(); });
         }).catch(function (err) {
-          F.submit.disabled = false;
-          F.submit.textContent = t('add.submit');
+          S.wait = null;
+          busy(false);
           if (err && err.code === 'invalid_input' && (err.field === 'title' || err.field === 'body')) {
             fe(err.field, t(errorInfo('invalid_input', 0, err.field).key));
             F[err.field].focus();
@@ -1201,13 +1207,12 @@
           h('label', { for: 'f-title', text: t('add.field.title') }), F.title, F.et,
           F.sim,
           h('label', { for: 'f-body', text: t('add.field.body') }), F.body, F.eb,
-          h('div', { class: 'hp', 'aria-hidden': 'true' }, [F.hp]),
-          F.ctx
+          h('div', { class: 'hp', 'aria-hidden': 'true' }, [F.hp])
         ]),
-        h('div', { class: 'ft' }, [F.submit, credit()])
+        foot([F.submit, credit()])
       ]);
       if (!S.entries.length && S.listState === 'ok') F.sim.hidden = true;
-      return { hd: header(t('add.title'), t('add.subtitle', { site: siteName() }), back), vw: form, focus: F.title };
+      return { hd: F.hd, vw: form, focus: F.title };
     }
 
     function viewThanks() {
@@ -1216,7 +1221,7 @@
         hd: header(t(pub ? 'thanks.published' : 'thanks.pending'), ''),
         vw: h('div', { class: 'vw' }, [
           h('div', { class: 'sc thx' }, [h('span', { class: 'ok', 'aria-hidden': 'true' }, [ic('ok')]), h('p', { text: t(pub ? 'thanks.published.text' : 'thanks.pending.text', { site: siteName() }) })]),
-          h('div', { class: 'ft' }, [
+          foot([
             h('button', { type: 'button', class: 'pri', text: t('thanks.back'), onclick: function () { setView('list'); } }),
             h('button', { type: 'button', class: 'sec', text: t('thanks.again'), onclick: function () { setView('add'); } }),
             credit()
@@ -1228,6 +1233,7 @@
     function setView(v) {
       S.view = v;
       if (v !== 'list') S.note = '';
+      S.wait = null;
       clearTimeout(S.qt); // a pending search paint must not redraw (and unfocus) the view we are switching to
       if (!S.panel) return;
       var parts = v === 'add' ? viewAdd() : v === 'detail' ? viewDetail() : v === 'thanks' ? viewThanks() : viewList();
@@ -1304,8 +1310,8 @@
       var out = Array.prototype.filter.call(S.panel.querySelectorAll('button,input,textarea,a[href],summary'), function (el) {
         return !el.disabled && el.tabIndex >= 0 && el.getClientRects().length > 0;
       });
-      var ifr = tsBox && tsBox.style.display !== 'none' && tsBox.querySelector('iframe');
-      if (ifr) out.push(ifr);
+      var ifr = tsBox && tsBox.slot && tsBox.querySelector('iframe'), ft = S.panel.querySelector('.ft');
+      if (ifr) out.splice(Math.max(0, out.findIndex(function (el) { return ft.contains(el); })), 0, ifr);
       return out;
     }
     function onKey(ev) {
@@ -1330,6 +1336,28 @@
       (f[0] || S.panel).focus({ preventScroll: true });
     }
 
+    // The panel keeps clear of what the host shows above it at the screen's top or bottom edge (an anchor ad and its
+    // handle, a cookie bar), so the header and the Send button are never under it. Taller than 40%: a host dialog.
+    function avoid() {
+      if (!S.isOpen) return;
+      var H = window.innerHeight, p = S.panel.getBoundingClientRect();
+      function edge(top) {
+        for (var n = 0, k = 0, x, el, b, e, more = 1; k < 4 && more; k++) {
+          for (more = 0, x = p.left + 6; x < p.right; x += 30) {
+            el = document.elementFromPoint(x, top ? n + 1 : H - n - 2);
+            if (el && !shadow.host.contains(el)) {
+              b = el.getBoundingClientRect();
+              e = top ? b.bottom : H - b.top;
+              if (e > n && e < H * 0.4) { n = e; more = 1; }
+            }
+          }
+        }
+        return Math.ceil(n) + 'px';
+      }
+      wrap.style.setProperty('--sat', edge(1));
+      wrap.style.setProperty('--sab', edge(0));
+    }
+
     function open(o, from) {
       o = o || {};
       if (S.isOpen) { if (S.strings) go(o); return; }
@@ -1348,6 +1376,8 @@
       // the page behind must not scroll while the dialog is open (wheel over the backdrop, header or footer)
       S.ov.addEventListener('wheel', function (ev) { if (!ev.composedPath().some(function (n) { return n.classList && n.classList.contains('sc'); })) ev.preventDefault(); }, { passive: false });
       wrap.appendChild(S.ov);
+      avoid();
+      S.av = setInterval(avoid, 700);
       window.addEventListener('keydown', onKey, true);
       document.addEventListener('focusin', onFocusIn, true);
       S.panel.focus({ preventScroll: true });
@@ -1363,6 +1393,7 @@
     function close() {
       if (!S.isOpen) return;
       S.isOpen = false;
+      clearInterval(S.av);
       window.removeEventListener('keydown', onKey, true);
       document.removeEventListener('focusin', onFocusIn, true);
       if (S.ov && S.ov.parentNode) S.ov.parentNode.removeChild(S.ov);
@@ -1374,11 +1405,7 @@
       emit('arghbox:close');
     }
 
-    function destroy() {
-      close();
-      if (tsBox && tsBox.parentNode) tsBox.parentNode.removeChild(tsBox);
-    }
-    mounted = { shadow: shadow, open: open, close: close, destroy: destroy, isOpen: function () { return S.isOpen; } };
+    mounted = { shadow: shadow, open: open, close: close, destroy: close, isOpen: function () { return S.isOpen; } };
     loadStrings();
     return mounted;
   }

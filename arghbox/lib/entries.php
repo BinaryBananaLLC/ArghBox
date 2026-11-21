@@ -52,7 +52,7 @@ function ab_strip_invisible(string $s, bool $keepNewline = false): string
 function ab_clean_title($v): string
 {
     if (!is_string($v)) {
-        throw ab_invalid('title', 'Give your argh a title.');
+        throw ab_invalid('title', 'Please give it a title.');
     }
     ab_require_utf8($v, 'title');
     $s = preg_replace('/\p{Cc}+/u', ' ', $v) ?? '';

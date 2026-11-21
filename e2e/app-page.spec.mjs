@@ -61,7 +61,7 @@ test('URL parameters apply: theme, accent, lang, tone, view=add, type, from, pla
   expect(await ab.evaluate((n) => n.style.getPropertyValue('--arghbox-accent'))).toBe('#336699')
   expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('dark')
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(29, 28, 34)')
-  await expect(page.locator('#arghbox-root .ctx')).toContainText('/settings/profile')
+  await expect(page.locator('#arghbox-root h2')).toHaveText('Report a bug')
 
   await page.locator('#f-title').fill('Please add a widget for the home screen')
   await page.locator('#arghbox-root form button[type=submit]').click()
@@ -307,7 +307,7 @@ test('without app_pass the web flow stays: Turnstile, then session {turnstile}',
   await expect.poll(() => api.requests('vote').length, { timeout: 10_000 }).toBe(1)
   expect(api.requests('session')[0].body.turnstile).toMatch(/^stub-token/)
   expect(await page.evaluate(() => window.__turnstileCalls.render)).toBeGreaterThan(0)
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('arghbox-turnstile')).display)).toBe('none') // hidden again after the challenge
+  await expect(page.locator('#arghbox-turnstile')).toHaveCount(0) // removed after the challenge
 })
 
 test('app_pass errors are friendly (a server that refuses the app pass)', async ({ page, servers, api }) => {

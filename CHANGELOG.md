@@ -13,6 +13,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- **Plain words in the dialog.** Visitors no longer read "argh" as a word for their post. The list is "Ideas, bugs and questions" ("Suggest an idea, report a bug or ask a question about {site}. No account needed."), its button "Add an idea, bug or question", and "Your arghs" is "Your posts". The add form's heading, placeholders and Send button follow the chosen type: "Suggest an idea" / "Send idea", "Report a bug" / "Send bug report", "Ask a question" / "Send question". The thank-you says "Thanks, we got it." The funny tone keeps only a few small jokes. The API's missing-title message is "Please give it a title."
+- **No context line on the form.** "We send along: page /, language en, Chrome on Android, small screen..." is gone; it read like debug output. Entries still record the page, language, browser and system family and screen size: mention it in your privacy policy (`docs/configuration.md`).
+- **The robot check sits inside the dialog.** When Cloudflare wants a click, its checkbox shows in the dialog's footer, right above the button that waits for it, instead of floating over the page. The widget is rendered fresh for each challenge and removed afterwards, so nothing stays in your page's DOM (it lives inside `#arghbox-root`, not `body`).
+- **The Send button says what is happening:** "Checking you are human..." with a spinner while the check runs, "Tick the box above to send" while Cloudflare waits for the visitor, then "Sending...". The Send report button spins too.
+- **Ads and cookie bars no longer cover the dialog.** Anything your page shows above the dialog at the top or bottom of the screen (an anchor ad and its collapse handle, a cookie bar, a chat button) pushes the panel's edge clear of it, so the header, Close and Send stay tappable. Nothing of your page is hidden or changed.
+- **Phones on their side** (screens up to 480 px tall) get the full-screen sheet, and the whole sheet scrolls, so the fields keep room next to a keyboard or an ad.
+- **Credit:** "Powered by ArghBox" shows the mascot in its own colours. The header-icon snippet in `docs/configuration.md` uses the current mascot.
+- A search with no results in the Bugs tab offers "Add it as a new post" as a bug report.
+- The dialog script's size budget is 22 KB gzipped (was 21 KB). It still loads only when a visitor opens the box.
 - The demo site in `demo/` is now Contoso Tasks (was Pocket Maps). `npm run dev` serves it with the real PHP box as before.
 - The feedback form is kinder to an unsent report: when the dialog was closed with a draft on screen, the tab reopens it on the form; Enter in the title moves on to the details instead of sending; Ctrl+Enter (Cmd+Enter) sends; the details box grows with the text.
 - Buttons, tabs, chips and choices show hover feedback with a mouse, and the Send button shows a busy cursor while sending.

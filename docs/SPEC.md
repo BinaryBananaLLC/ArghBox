@@ -37,7 +37,7 @@ fix one of them in the same change. Version 0.1.2.
 ```
 arghbox/                  the folder site owners upload, served at /arghbox/
   arghbox.js              loader: tab + JS API, < 4 KB gzipped
-  arghbox-app.js          dialog, loaded on first intent, < 21 KB gzipped
+  arghbox-app.js          dialog, loaded on first intent, < 22 KB gzipped
   arghbox-preview.js      the local preview's in-memory box, loaded only on a local dev host (section 8)
   app.html                the mobile app page: the dialog full screen, for an app's WebView (section 8b)
   app-page.js             that page's script: URL parameters, loader tag, bridges to the app, < 2 KB gzipped
@@ -719,11 +719,11 @@ window.ArghBox = {
 - Finds its own URL with `document.currentScript` (fallback: the last `script[src*="arghbox.js"]`).
 - Creates `<div id="arghbox-root">` at the end of `body` with an **open** Shadow DOM. Styles go
   into the shadow root as a constructable stylesheet (`adoptedStyleSheets`, every supported browser
-  has it; the app keeps a `<style>` fallback). Nothing else in the host DOM except the Turnstile
-  container (below).
-- Renders the tab: vertical "Feedback" label on the chosen edge under the ArghBox mark (the burst
-  in yellow and the box in the accent, `art/logo-mark-small.svg` simplified, an inline SVG built
-  with `createElementNS`) on a cream badge, and the ×
+  has it; the app keeps a `<style>` fallback). Nothing else in the host DOM: the Turnstile
+  container (below) is a child of `#arghbox-root` and exists only during a challenge.
+- Renders the tab: vertical "Feedback" label on the chosen edge under the ArghBox mascot (the pixel
+  box as an ink silhouette, `art/tab-icon.svg`, an inline SVG built with `createElementNS`) on a
+  white badge, and the ×
   (a separate button with `aria-label="Hide feedback button"`). Keyboard focusable, visible
   focus ring, respects `prefers-reduced-motion`.
 - Prefetches `arghbox-app.js` on tab `pointerenter`, `focus` or `touchstart`; loads it on click
@@ -734,7 +734,7 @@ window.ArghBox = {
   (`tools/translate.mjs` rewrites this block), and the list of available languages between
   `/* arghbox:langs:start */` and `/* arghbox:langs:end */` as `var LANGS = ["en"];`.
 
-### App (`arghbox-app.js`, < 21 KB gzipped)
+### App (`arghbox-app.js`, < 22 KB gzipped)
 - Fetches `i18n/<lang>.json` (lang matched against `LANGS`: exact, then the part before `-`,
   else `en`) and `api.php?action=list` in parallel when it mounts.
 - **Dialog**: `role="dialog"`, `aria-modal="true"`, labelled by its title, focus trapped, Esc and
@@ -742,8 +742,17 @@ window.ArghBox = {
   is a primary-button press and release both on the backdrop: a text selection dragged out of a
   field, or a press on the backdrop let go in the panel, does not close it. Esc and Tab pressed
   while an input method composes (Chinese, Japanese, Korean) are left to it. Desktop: a panel of about
-  420 px on the tab's side; phones (< 640 px): full-screen sheet. Body scroll of the host page
-  is not locked in a way that jumps (no layout shift).
+  420 px on the tab's side; phones (< 640 px wide) and short screens (≤ 480 px tall, a phone on its
+  side): full-screen sheet. On short screens the header, the form and the footer scroll as one, so
+  the fields always get room. Body scroll of the host page is not locked in a way that jumps (no
+  layout shift).
+- **Host overlays**: while the dialog is open, it probes the top and bottom edges of the panel every
+  0.7 s with `elementFromPoint`. Whatever the host shows above the dialog there (an anchor ad and its
+  collapse handle, a cookie bar, a chat button) moves the panel's top or bottom edge clear of it
+  (`--sat` / `--sab` on the wrapper), so it never covers the header, the Close button or Send.
+  A probe that hits something moves past it and probes again (up to 4 times), so an ad and the
+  handle hanging under it are both cleared. Elements taller than 40% of the screen are ignored (a
+  host dialog). Nothing of the host is hidden or changed.
 - **Views**:
   - List (a public backlog):
     - Tabs Ideas / Bugs (questions show under Ideas with a "Question" badge) and sort Top /
@@ -752,12 +761,12 @@ window.ArghBox = {
       similar search. Tag chips filter by `tag_counts`.
     - The owner's `welcome` text (plain text, line breaks kept) at the top when set.
     - Owner-written text only (`welcome`, the owner's public comments in the detail view, "Your
-      arghs" and closed-item excerpts) has `http(s)://` URLs turned into links (`target="_blank"`,
+      posts" and closed-item excerpts) has `http(s)://` URLs turned into links (`target="_blank"`,
       `rel="noopener nofollow ugc"`, long URLs shortened in the middle, trailing `.,!?;:` and
       unbalanced `)` left out, built with DOM nodes, never `innerHTML`). Visitor text (titles,
       bodies, aliases) is never linked.
-    - A search with no results offers "Nothing like that yet. Add it as a new argh", which
-      opens the add form with the search text as the title.
+    - A search with no results offers "Nothing like that yet. Add it as a new post", which
+      opens the add form with the search text as the title (as a bug report in the Bugs tab).
     - Two sections: **Open** (open, planned, in progress) and **Closed** (done, then declined),
       the closed one collapsed behind "Closed (N)".
     - Each card shows the vote button with its count, a status badge for non-open statuses,
@@ -768,7 +777,7 @@ window.ArghBox = {
     - the owner's public comments as a dated thread labelled with the site name
     - the merged titles ("Also asked as ...")
     - for declined entries, the latest comment is the explanation
-  - "Your arghs": this browser's own entries via `mine`, shown above the list when any exist.
+  - "Your posts": this browser's own entries via `mine`, shown above the list when any exist.
     Receipts are kept in localStorage `arghbox:receipts`, at most 50. States:
     - pending: "waiting for review"
     - published: opens its detail
@@ -780,7 +789,12 @@ window.ArghBox = {
     - the owner's public comments
   - Add:
     - Fields: type selector (Idea / Bug / Question), title, optional details, and a honeypot
-      field hidden from people and screen readers. A line says what a bug report attaches.
+      field hidden from people and screen readers. The heading, the placeholders and the Send
+      button follow the type: "Suggest an idea" / "Send idea", "Report a bug" / "Send bug report"
+      (details: "What did you do, and what happened instead?"), "Ask a question" / "Send question".
+    - The Send button says what the visitor waits for: "Checking you are human..." with a spinner
+      while Turnstile runs, "Tick the box above to send" (no spinner) while Cloudflare shows its
+      checkbox, then "Sending..." with a spinner.
     - While the title is typed (debounced 150 ms), up to 3 similar entries appear, open and
       closed ("Is it one of these? Vote instead"). Open ones have vote buttons; closed ones
       show their status and the start of the latest comment ("Declined: we keep the map 2D
@@ -794,7 +808,7 @@ window.ArghBox = {
     - The draft (type, title, details) is kept while the page is open. Closed with an unsent
       draft on screen, the dialog reopens on the form when opened with no route (the tab,
       `ArghBox.open()`); a route (`#arghbox`, a view) still wins. Sending clears the draft.
-  - Thanks: "Your argh is in the box." (pending) or "Your argh is up." (publish mode), with "Thanks for helping
+  - Thanks: "Thanks, we got it." (pending) or "Thanks, it is listed." (publish mode), with "Thanks for helping
     us improve {site}!".
   - **Report** (section 6b): the detail view of a visitor entry (never `source: owner`) has a small "Report"
     button. It opens an inline choice of four reasons (Spam, Rude or abusive, Not about this site or app,
@@ -808,26 +822,30 @@ window.ArghBox = {
 - **Context sent with `add`**: `page` = `location.pathname` only; `lang` = page language;
   `browser` and `os` = coarse family from `navigator.userAgentData` or the UA string (e.g.
   "Chrome", "Firefox", "Safari", "Edge"; "Windows", "macOS", "Android", "iOS", "Linux");
-  `screen` = `small` (< 640 px wide), `medium` (< 1200), `large`. The add form shows exactly
-  this before sending.
-- **Turnstile**: when the dialog opens, add
-  `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit` once, render into a
-  light-DOM container `<div id="arghbox-turnstile">` appended to `body` (Turnstile does not
-  render reliably inside a shadow root), with `appearance: 'interaction-only'`, position fixed
-  above the dialog's bottom edge, z-index above the dialog, visible only while Cloudflare
-  needs an interaction. Exchange the token for a pass (`session`) and keep the pass in memory
-  until it expires. A `pass_invalid` or `pass_expired` error resets Turnstile, gets a new pass
+  `screen` = `small` (< 640 px wide), `medium` (< 1200), `large`. The form does not show it
+  (visitors read it as debug output); `docs/configuration.md` asks site owners to mention it in their
+  privacy policy.
+- **Turnstile**: once the list has given the site key, add
+  `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit` once. The add form starts
+  a challenge as soon as it opens (votes and reports when they are made). Each challenge renders a
+  fresh widget (`appearance: 'interaction-only'`, `size: 'flexible'`, `compact` under 360 px)
+  into a light-DOM `<div id="arghbox-turnstile">` appended to `#arghbox-root` (Turnstile does not
+  render reliably inside a shadow root), and removes it once settled, so nothing stays in the host's
+  DOM. The box shows through a `<slot name="ts">` at the top of every footer, right above the button
+  that waits for it, and only while Cloudflare needs an interaction; unslotted it is not rendered,
+  so a late challenge never shows after the dialog closed. Exchange the token for a pass (`session`)
+  and keep the pass in memory until it expires. A `pass_invalid` or `pass_expired` error resets Turnstile, gets a new pass
   and retries the request once. If Turnstile cannot load (blocked, offline), the list still
   works and voting/adding show a friendly message.
 - **Errors**: every error code from section 6 maps to a friendly string; `rate_limited` shows
   the wait in minutes. The dialog never shows raw JSON.
 - **Credit**: when `credit` is true and `data-credit` is not `off`, a small "Powered by ArghBox" link
-  with the ArghBox mark in its own colours (outline in the text colour) in the footer, to `https://arghbox.com/`
+  with the ArghBox mascot in its own colours (`art/logo-mark-small.svg`) in the footer, to `https://arghbox.com/`
   (`rel="noopener"`, `target="_blank"`).
-- **What the box is for**: every view says it in plain words. The list header has a subtitle ("Found a bug or
-  missing a feature on {site}? Tell us, or upvote what others asked for. No account needed."), the add form one
-  too ("... We read every one."). These follow the usual pattern of feedback widgets: a short title, one line on
-  what to do and that no account is needed, and a thank-you at the end.
+- **What the box is for**: every view says it in plain words. The list is titled "Ideas, bugs and questions",
+  with "Suggest an idea, report a bug or ask a question about {site}. No account needed."; the add form says
+  "We read every one. No account needed." These follow the usual pattern of feedback widgets: a short title,
+  one line on what to do and that no account is needed, and a thank-you at the end.
 - **Local preview**: when the first `list` fails with `network`, `not_configured` or an answer that is not JSON
   at all, on a page whose host is `localhost`, `127.0.0.1`, `[::1]` or `*.localhost`, and
   `window.ArghBoxConfig.localPreview` is not `false`, the app loads `arghbox-preview.js?v=<version>` (with the
@@ -842,9 +860,11 @@ window.ArghBox = {
   cross the shadow boundary): `--arghbox-accent` (what `data-accent` sets on the wrapper, so the attribute wins),
   `--arghbox-bg`, `--arghbox-fg`, `--arghbox-muted`, `--arghbox-card`, `--arghbox-border`, `--arghbox-line` and
   `--arghbox-font`. The colour ones apply to the theme that is showing. A host's plain `--accent` does not leak in.
-- **Copy**: funny by default, poking fun at frustration, never at the visitor; `data-tone="neutral"`
-  switches to plain copy. Both tones are keys in `i18n/en.json` (`*.funny` / `*.neutral` pairs
-  only where they differ).
+- **Copy**: plain words that name what visitors post: ideas, bugs and questions. "ArghBox" is the
+  product name only; no string calls a post an "argh" (a unit test checks `en.json`). The funny tone
+  (default) only adds a few small jokes, such as the empty Bugs tab and the rate-limit message;
+  `data-tone="neutral"` drops them. Both tones are keys in `i18n/en.json` (`*.funny` / `*.neutral`
+  pairs only where they differ).
 
 ### Strings (`i18n/<lang>.json`)
 Flat object of `key: string`. Placeholders `{name}`. Plurals use `Intl.PluralRules` categories as
@@ -880,7 +900,7 @@ fall back to `.other`, then to English. `_meta` key holds `{lang, name, version}
 
 A native app (Swift, Kotlin, React Native, Flutter, ...) shows the box by opening
 `https://example.com/arghbox/app.html` in a WebView. Visitors see the whole board (list, search, vote, add,
-"Your arghs", report) with no sign-in. The page is on the site's own host, so Turnstile accepts it like the web
+"Your posts", report) with no sign-in. The page is on the site's own host, so Turnstile accepts it like the web
 widget (Cloudflare supports Turnstile in WebViews, with JavaScript and DOM storage enabled). The voter key and
 receipts live in the WebView's localStorage, which persists per app install.
 
@@ -1067,7 +1087,7 @@ Files: `skill/arghbox-triage/` — `SKILL.md`, `PROMPT.md`, `RULES.md`, `triage.
 
 `arghbox` on npmjs.com holds the `arghbox/` folder (without `config.php`, databases, `data/` contents, logs and `.bak` files), the triage skill, `bin/`, `index.mjs`/`index.d.ts`, `tools/install.mjs` and `tools/new-secrets.mjs`. It has no runtime dependencies. `package.json`, `arghbox/VERSION`, `lib/version.php` and the CHANGELOG heading always carry the same version (`tests/tools/package.test.mjs`). `.github/workflows/release.yml` publishes a version only when the owner runs it (Actions, Release, Run workflow, or a pushed `vX.Y.Z` tag). The tag is the only input: every job writes its version into the files with `tools/set-version.mjs` (package.json and the lockfile, `arghbox/VERSION`, `lib/version.php`, the widget headers and constants, docs and tests; CHANGELOG `## [Unreleased]` becomes the dated section used as the release notes), and after npm published, a last job commits the same change back to the branch (not for pre-releases). It refuses a tag older than package.json, a version already on npm and an already published release, builds the zips and the npm tarball with build provenance attestations, creates the GitHub Release (draft first, then published), and publishes to npm with `--provenance` (`--tag next` for pre-release versions). It runs no tests. `publishConfig` has no `provenance`, so a local `npm publish` works too.
 | `tools/translate.mjs <lang...> [--paid] [--all]` | **Owner only, paid** (Azure OpenAI). Translates missing or changed keys of `arghbox/i18n/en.json` into `i18n/<lang>.json`, updates the LABELS and LANGS blocks in `arghbox.js`. Reads `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` from the environment or the git-ignored `.secrets/azure-openai.json`. Without `--paid` it only prints what it would send and costs nothing. Agents never run it with `--paid`. |
-| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB, `arghbox-app.js` > 21 KB or `app-page.js` > 2 KB gzipped. |
+| `tools/check-size.mjs` | Fails when `arghbox.js` > 4 KB, `arghbox-app.js` > 22 KB or `app-page.js` > 2 KB gzipped. |
 | `tools/render-art.mjs` | Renders the PNG art (favicons into `art/brand/`, social card, README banner) from `art/` sources with Playwright. |
 | `tools/build-pages.mjs [--out <dir>] [--serve [--port 8790]]` | Builds the GitHub Pages demo into `dist/pages/`: `demo/` plus the browser files of `arghbox/` (no PHP), the admin shell taken from `admin/index.php` as `arghbox/admin/index.html`, and `demo/backend.js` added before the widget, admin and app page scripts (it answers `api.php` in the browser; admin password `demo`). `--serve` serves it under `/ArghBox/` like GitHub Pages (`npm run demo`). `.github/workflows/demo.yml` publishes it after each successful Release run, or when run by hand. |
 | `tools/capture.mjs` | Takes the README screenshots of the real widget and admin page (on the demo page) with Playwright into `docs/images/`. |

@@ -54,7 +54,7 @@ Missing keys fall back to these defaults, so you only list what you change.
 | `mcp_writes_per_minute` | 30 | MCP write calls per token per minute. |
 | `sessions_global_per_hour` | 2000 | Turnstile checks per hour for the whole site, whatever the number of visitors. |
 | `auth_failures_global_per_hour` | 500 | Wrong tokens per hour for the whole site (REST and MCP). |
-| `mine_per_hour` | 120 | "Your arghs" lookups per visitor per hour. |
+| `mine_per_hour` | 120 | "Your posts" lookups per visitor per hour. |
 | `reports_per_hour` | 10 | Reports per visitor (per IP hash) per hour. |
 | `block_days` | 90 | How long "Block author" lasts. You can lift a block at any time. |
 
@@ -105,11 +105,12 @@ The tab is only one way in. Any page can open the same dialog from its own butto
 - Events on `window`: `arghbox:ready`, `arghbox:open`, `arghbox:close`, `arghbox:add`, `arghbox:vote`, `arghbox:dismiss` and `arghbox:tab`. They never carry visitor text.
 
 ```html
-<!-- in the header: the ArghBox logo as an icon link -->
+<!-- in the header: the ArghBox mascot as an icon link -->
 <a href="#arghbox" aria-label="Feedback: share an idea or report a bug" title="Feedback">
-  <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-    <path fill="#ffc83d" d="M17 1l2 4h3l-1 4 3 3-4 1-1 4-3-3-4 3v-5l-3-1 2-3-1-4 4 1z"/>
-    <path fill="#e8553d" d="M3 13h26v8H3zM5 21v8h22v-8M10 17h12"/>
+  <svg viewBox="0 0 16 16" width="22" height="22" shape-rendering="crispEdges" aria-hidden="true">
+    <path fill="#1E2430" d="M0 1h16v4H0zM1 5h14v10H1z"/>
+    <path fill="#38BDF8" d="M1 2h14v1H1z"/><path fill="#0EA5E9" d="M1 3h14v1H1z"/><path fill="#7DD3FC" d="M2 5h12v9H2z"/>
+    <path fill="#1E2430" d="M3 7h2v1H3zM5 8h1v1H5zM11 7h2v1h-2zM10 8h1v1h-1zM4 9h2v2H4zM10 9h2v2h-2zM6 12h4v1H6zM5 13h1v1H5zM10 13h1v1h-1z"/>
   </svg>
 </a>
 
@@ -174,9 +175,13 @@ If your site routes with the URL hash (Vue Router in hash mode, React `HashRoute
 
 `#arghbox` links are fine on sites without a hash router.
 
+### What an entry records, and your privacy policy
+
+Besides the title and details, every entry records the page path (never the query or the hash), the page language, the browser and system family (for example "Chrome" on "Android") and a screen size class (small, medium or large). The form does not show this line to visitors, so mention it in your privacy policy, for example: "Feedback posts include the page you were on, its language, your browser and system family and your screen size. Your IP address is stored only as a salted hash."
+
 ### Keeping secrets out of the recorded page
 
-Every entry records the page path (never the query or the hash), and the add form shows it before sending. If your URL paths themselves contain secrets (a password-reset token, a magic link, an invoice id), tell ArghBox what to record instead.
+If your URL paths themselves contain secrets (a password-reset token, a magic link, an invoice id), tell ArghBox what to record instead.
 
 - `data-page` on the script tag sets a fixed path for the page, for example `data-page="/account/reset"`. Use it on pages whose real URL must never be recorded.
 - `window.ArghBoxConfig.redactPage` is a function that receives the real path and returns the path to record. Define it before the dialog opens, for example in your own script above the ArghBox tag:
@@ -192,4 +197,4 @@ Every entry records the page path (never the query or the hash), and the add for
 <script src="/arghbox/arghbox.js?v=0.1.2" defer></script>
 ```
 
-What the function returns is what the form shows and what is stored. Return `''` to record no page at all.
+What the function returns is what is stored. Return `''` to record no page at all.

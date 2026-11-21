@@ -104,7 +104,7 @@
   var RE_INVISIBLE_KEEP_NL = new RegExp('(?!\\n)[' + INVISIBLE + ']', 'gu');
 
   function cleanTitle(v) {
-    if (typeof v !== 'string') throw invalid('title', 'Give your argh a title.');
+    if (typeof v !== 'string') throw invalid('title', 'Please give it a title.');
     var s = v.replace(/\p{Cc}+/gu, ' ').replace(RE_INVISIBLE, '').replace(/\s+/gu, ' ').trim();
     var n = len(s);
     if (n < 4) throw invalid('title', 'The title is too short (at least 4 characters).');

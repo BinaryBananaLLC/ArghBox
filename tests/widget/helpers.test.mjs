@@ -170,10 +170,16 @@ test('every string key the app asks for exists in en.json', () => {
   const has = (k) => Object.keys(dict).some((d) => d === k || d.startsWith(k + '.'))
   for (const m of src.matchAll(/\bt\('([a-z_.]+)'/g)) if (!m[1].endsWith('.')) assert.ok(has(m[1]), 'missing string: ' + m[1])
   for (const k of ['status.planned', 'status.in_progress', 'status.done', 'status.declined', 'type.idea', 'type.bug', 'type.question', 'tab.ideas', 'tab.bugs',
-    'sort.top', 'sort.new', 'screen.small', 'screen.medium', 'screen.large', 'add.ph.idea', 'add.ph.bug', 'add.ph.question', 'reason.spam', 'reason.abuse',
+    'sort.top', 'sort.new', 'add.ph.idea', 'add.ph.bug', 'add.ph.question', 'reason.spam', 'reason.abuse',
+    'add.title.idea', 'add.title.bug', 'add.title.question', 'add.submit.idea', 'add.submit.bug', 'add.submit.question',
+    'add.ph.body.idea', 'add.ph.body.bug', 'add.ph.body.question',
     'reason.off_topic', 'reason.test', 'reason.unclear', 'err.invalid_input.title', 'err.invalid_input.body']) assert.ok(has(k), k)
   assert.equal(dict._meta.lang, 'en')
   for (const [k, v] of Object.entries(dict)) if (k !== '_meta') assert.equal(typeof v, 'string', k)
+})
+
+test('visitors read plain words: no string calls a post an "argh" (the product name ArghBox is fine)', () => {
+  for (const [k, v] of Object.entries(en())) if (k !== '_meta') assert.doesNotMatch(v, /\bargh(?!box)/i, k)
 })
 
 test('fmtDate, clip, newVoterKey, toMs', () => {

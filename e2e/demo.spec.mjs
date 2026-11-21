@@ -71,15 +71,15 @@ test('voting counts once, and the same visitor cannot vote twice on the same ent
   expect((await stack.list()).entries.find((e) => e.id === entry.id).votes).toBe(20)
 })
 
-test('a new idea waits as pending under "Your arghs", and shows in the list once the owner publishes it', async ({ page, stack }) => {
+test('a new idea waits as pending under "Your posts", and shows in the list once the owner publishes it', async ({ page, stack }) => {
   await page.goto(stack.siteUrl + '/')
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Show walking time next to the distance')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Show walking time next to the distance')
   await panel(page).getByLabel('Details (optional)').fill('A rough estimate is plenty.')
   // The server drops forms sent in under 2.5 s as robots. The widget waits that out itself, so no test sleep is needed.
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 15_000 })
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 15_000 })
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
   await expect(panel(page).locator('.mine')).toContainText('Show walking time next to the distance')
   await expect(panel(page).locator('.mine')).toContainText('Waiting for review.')
@@ -281,10 +281,10 @@ test('api.php and mcp.php answer with X-Robots-Tag: noindex', async ({ page, sta
 
 test('the demo hash links open the right view: #arghbox-add the form, the bug link a bug report', async ({ page, stack }) => {
   await page.goto(stack.siteUrl + '/#arghbox-add')
-  await expect(panel(page).getByLabel('In a few words')).toBeVisible()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeVisible()
   await page.goto(stack.siteUrl + '/')
   await page.getByRole('link', { name: 'Report a bug', exact: true }).click()
-  await expect(panel(page).getByLabel('In a few words')).toBeVisible()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeVisible()
   await expect(panel(page).getByRole('radio', { name: /Bug/ })).toBeChecked()
   expect(await page.evaluate(() => location.hash)).toBe('')
   // the ArghBox icon in the header is an #arghbox link too

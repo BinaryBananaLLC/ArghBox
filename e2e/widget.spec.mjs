@@ -137,12 +137,12 @@ test('opens by click, by ArghBox.open(), by #arghbox links (hash removed), by ty
   await expect(panel(page)).toHaveCount(0)
 
   await page.evaluate(() => ArghBox.open())
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await page.evaluate(() => ArghBox.close())
   await expect(panel(page)).toHaveCount(0)
 
   await page.evaluate(() => ArghBox.open({ view: 'add', type: 'bug' }))
-  await expect(panel(page).locator('h2')).toHaveText("What's your argh?")
+  await expect(panel(page).locator('h2')).toHaveText('Report a bug')
   await expect(panel(page).getByLabel('Bug')).toBeChecked()
   await page.evaluate(() => ArghBox.close())
 
@@ -151,7 +151,7 @@ test('opens by click, by ArghBox.open(), by #arghbox links (hash removed), by ty
   await page.evaluate(() => ArghBox.close())
 
   await page.locator('#open-link').click()
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   expect(page.url()).not.toContain('#')
   await page.evaluate(() => ArghBox.close())
 
@@ -234,14 +234,16 @@ test('list: empty box copy, neutral tone copy', async ({ page, servers, api }) =
   api.entries = []
   await load(page, servers)
   await openDialog2(page)
-  await expect(panel(page)).toContainText('The box is empty. Be the first to say argh.')
+  await expect(panel(page)).toContainText('No ideas yet. Be the first to suggest one.')
   await page.getByRole('tab', { name: 'Bugs' }).click()
-  await expect(panel(page)).toContainText('No bugs in the box. Suspicious, but nice.')
+  await expect(panel(page)).toContainText('No bugs reported yet. Suspicious, but nice.')
   await load(page, servers, { 'data-tone': 'neutral' })
   await openDialog2(page)
-  await expect(panel(page).locator('h2')).toHaveText('Send feedback')
-  await expect(panel(page)).toContainText('Nothing here yet. Be the first to add something.')
-  await expect(panel(page).getByRole('button', { name: 'Add feedback' })).toBeVisible()
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
+  await expect(panel(page)).toContainText('No ideas yet. Be the first to suggest one.')
+  await expect(panel(page).getByRole('button', { name: 'Add an idea, bug or question' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Bugs' }).click()
+  await expect(panel(page).locator('.empty')).toHaveText('No bugs reported yet.')
 })
 async function openDialog2(page) { // list may be empty: wait for the heading only
   await tab(page).click()
@@ -342,18 +344,18 @@ test('owner text gets real links (welcome, comments, closed excerpts); visitor t
   // closed excerpt in the similar suggestions
   await page.evaluate(() => ArghBox.close())
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  await panel(page).getByLabel('In a few words').fill('3d globe')
+  await panel(page).getByLabel('Title', { exact: true }).fill('3d globe')
   const ex = panel(page).locator('.sim .it', { hasText: '3D globe view' }).locator('.ex a')
   await expect(ex).toHaveAttribute('href', url)
   await expect(panel(page).locator('.sim .tt a')).toHaveCount(0)
 })
 
-test('"Your arghs" comments link too', async ({ page, servers, api }) => {
+test('"Your posts" comments link too', async ({ page, servers, api }) => {
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  await panel(page).getByLabel('In a few words').fill('Please add export options')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await panel(page).getByLabel('Title', { exact: true }).fill('Please add export options')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
   const receipt = JSON.parse(await page.evaluate(() => localStorage.getItem('arghbox:receipts')))[0]
   api.setEntry(receipt, { state: 'published', comments: [{ body: 'Docs: https://example.com/export.', at: '2026-11-21T09:00:00Z' }] })
   await page.reload()
@@ -363,14 +365,14 @@ test('"Your arghs" comments link too', async ({ page, servers, api }) => {
   await expect(a).toHaveAttribute('target', '_blank')
 })
 
-test('empty search offers "Add it as a new argh", which opens the form with the search text as the title', async ({ page, servers }) => {
+test('empty search offers "Add it as a new post", which opens the form with the search text as the title', async ({ page, servers }) => {
   await load(page, servers)
   await openDialog(page)
   await panel(page).getByRole('searchbox').fill('quantum teleporter')
   await expect(panel(page)).toContainText('Nothing like that yet.')
-  await panel(page).getByRole('button', { name: 'Add it as a new argh' }).click()
-  await expect(panel(page).locator('h2')).toHaveText("What's your argh?")
-  await expect(panel(page).getByLabel('In a few words')).toHaveValue('quantum teleporter')
+  await panel(page).getByRole('button', { name: 'Add it as a new post' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Suggest an idea')
+  await expect(panel(page).getByLabel('Title', { exact: true })).toHaveValue('quantum teleporter')
 })
 
 test('#arghbox-<id> opens that entry; the hash is removed; an unknown id falls back to the list', async ({ page, servers }) => {
@@ -378,7 +380,7 @@ test('#arghbox-<id> opens that entry; the hash is removed; an unknown id falls b
   await expect(panel(page).locator('h2')).toHaveText('Dark mode')
   expect(page.url()).not.toContain('#')
   await panel(page).getByRole('button', { name: 'Back' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await page.evaluate(() => ArghBox.close())
   await page.locator('#open-link').evaluate((a) => { a.setAttribute('href', '#arghbox-7') })
   await page.locator('#open-link').click()
@@ -386,7 +388,7 @@ test('#arghbox-<id> opens that entry; the hash is removed; an unknown id falls b
   await page.evaluate(() => ArghBox.close())
   await page.locator('#open-link').evaluate((a) => { a.setAttribute('href', '#arghbox-99999') })
   await page.locator('#open-link').click()
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await expect(card(page, 'Dark mode')).toBeVisible()
 })
 
@@ -419,11 +421,11 @@ test('detail: full text, status date, tags, vote, comment thread, also asked as;
   await expect(panel(page).locator('.cm time')).toHaveText('Nov 20, 2026')
   await expect(panel(page).getByText(/also asked as/i)).toBeVisible()
   await expect(panel(page).locator('.al li')).toHaveText(['Night theme please', 'Tryb ciemny'])
-  await expect(panel(page)).toContainText('14 people said argh about this.')
+  await expect(panel(page)).toContainText('14 votes')
   await voteBtn(page, 'Dark mode').click()
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true')
   await panel(page).getByRole('button', { name: 'Back' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true') // state shared with the list
 
   // filters and scroll survive a detail round trip
@@ -460,7 +462,7 @@ test('voting toggles, sends the exact JSON, and survives a reload (voted ids fro
   await expect(btn).toHaveAttribute('aria-pressed', 'true')
   await expect(btn).toHaveAttribute('aria-label', 'Dark mode, 15 Upvoted')
   await expect(btn.locator('.n')).toHaveText('15')
-  await expect(panel(page).locator('[role=status]')).toContainText('Counted. 15 people said argh about this.')
+  await expect(panel(page).locator('[role=status]')).toContainText('Counted. 15 votes')
   const v = api.last('vote')
   expect(Object.keys(v).sort()).toEqual(['id', 'on', 'pass', 'voter'])
   expect(v).toMatchObject({ id: 1, on: true, pass: 'pass-1' })
@@ -512,8 +514,48 @@ test('the interactive Turnstile container shows only while a challenge needs the
   expect(calls.render).toBe(1)
   expect(await page.evaluate(() => window.__turnstileLastRender.appearance)).toBe('interaction-only')
   expect(await page.evaluate(() => window.__turnstileLastRender.sitekey)).toBe('1x00000000000000000000AA')
-  // the container lives in the light DOM, appended to body
-  expect(await page.evaluate(() => document.getElementById('arghbox-turnstile').parentElement === document.body)).toBe(true)
+  await expect(box).toHaveCount(0) // removed once the pass came: nothing stays behind in the host's DOM
+  expect(await page.evaluate(() => [...document.body.children].some((e) => e.id === 'arghbox-turnstile'))).toBe(false)
+})
+
+test('a challenge that needs the visitor shows inside the dialog, right above the Send button, which says to tick it', async ({ page, servers }) => {
+  await page.route(CF, (route) => route.fulfill({ contentType: 'application/javascript', body: HOLDING_STUB }))
+  await load(page, servers)
+  await openDialog(page)
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  const box = page.locator('#arghbox-turnstile')
+  await expect(box).toBeVisible() // the form starts the check at once; this one asks the visitor
+  // a light-DOM child of the widget's root (Turnstile fails in shadow roots), shown through the footer's slot
+  expect(await box.evaluate((b) => b.parentElement.id + ' ' + b.slot)).toBe('arghbox-root ts')
+  const send = panel(page).locator('form button[type=submit]')
+  const [p, b, s] = await Promise.all([panel(page).boundingBox(), box.boundingBox(), send.boundingBox()])
+  expect(b.x).toBeGreaterThanOrEqual(p.x)
+  expect(b.x + b.width).toBeLessThanOrEqual(p.x + p.width + 0.5)
+  expect(b.y + b.height).toBeLessThanOrEqual(s.y) // above the button, not on top of it
+  await panel(page).getByLabel('Title', { exact: true }).fill('Waiting for the tick')
+  await send.click()
+  await expect(send).toHaveText('Tick the box above to send')
+  await expect(send).toBeDisabled()
+  await expect(send).toHaveAttribute('aria-busy', 'false') // no spinner: it waits for the visitor, not for us
+  await page.evaluate(() => { window.__o['after-interactive-callback'](); window.__o.callback('stub-token-ticked') })
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
+  await expect(box).toHaveCount(0)
+})
+
+test('while the check runs, the Send button says so and spins; then it says Sending', async ({ page, servers }) => {
+  await page.route(CF, (route) => route.fulfill({ contentType: 'application/javascript', body: HOLDING_STUB }))
+  await page.addInitScript(() => { window.__quiet = true }) // the stub neither asks the visitor nor answers yet
+  await load(page, servers)
+  await openDialog(page)
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Patience is a virtue')
+  const send = panel(page).locator('form button[type=submit]')
+  await send.click()
+  await expect(send).toHaveText('Checking you are human...')
+  await expect(send).toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('#arghbox-turnstile')).toBeHidden() // nothing for the visitor to do
+  await page.evaluate(() => window.__o.callback('stub-token-late'))
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
 })
 
 // ---------------------------------------------------------------- adding
@@ -521,13 +563,12 @@ test('the interactive Turnstile container shows only while a challenge needs the
 test('adding an idea sends the exact JSON; context has the pathname only', async ({ page, servers, api }, info) => {
   await page.goto(hostUrl(servers, 'plain', { secret: 'abc123' }, '#frag-9'))
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await expect(panel(page).getByLabel('In a few words')).toBeFocused()
-  await expect(panel(page).locator('.ctx')).toContainText('page /plain.html')
-  await panel(page).getByLabel('In a few words').fill('  Please add a   weather layer ')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeFocused()
+  await panel(page).getByLabel('Title', { exact: true }).fill('  Please add a   weather layer ')
   await panel(page).getByLabel('Details (optional)').fill('Rain and wind, please.\nSecond line.')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
   await expect(panel(page).locator('[role=status]')).toBeAttached()
 
   const a = api.last('add')
@@ -543,24 +584,25 @@ test('adding an idea sends the exact JSON; context has the pathname only', async
   expect(await events(page)).toContainEqual({ name: 'add', detail: { type: 'idea' } })
   expect(JSON.stringify(await events(page))).not.toMatch(/weather|Rain/)
 
-  // pending entry: not in the list, shown under "Your arghs"
+  // pending entry: not in the list, shown under "Your posts"
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
-  await expect(panel(page).locator('.mine summary')).toHaveText('Your arghs (1)')
+  await expect(panel(page).locator('.mine summary')).toHaveText('Your posts (1)')
   await expect(panel(page).locator('.mine')).toContainText('Please add a weather layer')
   await expect(panel(page).locator('.mine')).toContainText('Waiting for review.')
   await expect(card(page, 'weather layer')).toHaveCount(0)
 })
 
-test('adding a bug; publish mode shows "Your argh is up." and lists it with the visitor voted', async ({ page, servers, api }) => {
+test('adding a bug; publish mode shows "Thanks, it is listed." and lists it with the visitor voted', async ({ page, servers, api }) => {
   api.set({ moderation: 'publish' })
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   await panel(page).getByLabel('Bug').check()
-  await expect(panel(page).locator('.ctx')).toContainText('A bug report attaches: page /plain.html')
-  await panel(page).getByLabel('In a few words').fill('Pins vanish when I rotate the phone')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is up.')
+  await expect(panel(page).locator('h2')).toHaveText('Report a bug') // the title, the placeholder and the button follow the type
+  await expect(panel(page).getByLabel('Details (optional)')).toHaveAttribute('placeholder', 'What did you do, and what happened instead?')
+  await panel(page).getByLabel('Title', { exact: true }).fill('Pins vanish when I rotate the phone')
+  await panel(page).getByRole('button', { name: 'Send bug report' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, it is listed.')
   expect(api.last('add')).toMatchObject({ type: 'bug', title: 'Pins vanish when I rotate the phone', body: '' })
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
   await panel(page).getByRole('tab', { name: 'Bugs' }).click()
@@ -571,9 +613,9 @@ test('adding a bug; publish mode shows "Your argh is up." and lists it with the 
 test('add form: validation, honeypot is hidden from people and screen readers, draft survives Esc', async ({ page, servers, api }) => {
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  const title = panel(page).getByLabel('In a few words')
+  const title = panel(page).getByLabel('Title', { exact: true })
   await title.fill('abc')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('#e-title')).toHaveText(EN['err.title_short'])
   await expect(title).toHaveAttribute('aria-invalid', 'true')
   await expect(title).toHaveAttribute('aria-describedby', 'e-title')
@@ -585,26 +627,26 @@ test('add form: validation, honeypot is hidden from people and screen readers, d
   await title.fill('A half written idea')
   await page.keyboard.press('Escape')
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  await expect(panel(page).getByLabel('In a few words')).toHaveValue('A half written idea')
+  await expect(panel(page).getByLabel('Title', { exact: true })).toHaveValue('A half written idea')
 })
 
 test('server field errors on add are tied to the field with aria-describedby', async ({ page, servers, api }) => {
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
   api.failNext('add', 'invalid_input', { field: 'title' })
-  await panel(page).getByLabel('In a few words').fill('Something long enough')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Something long enough')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('#e-title')).toHaveText(EN['err.invalid_input.title'])
-  await expect(panel(page).getByLabel('In a few words')).toHaveAttribute('aria-describedby', 'e-title')
-  await expect(panel(page).getByRole('button', { name: 'Drop it in the box' })).toBeEnabled()
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await expect(panel(page).getByLabel('Title', { exact: true })).toHaveAttribute('aria-describedby', 'e-title')
+  await expect(panel(page).getByRole('button', { name: 'Send idea' })).toBeEnabled()
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
 })
 
 test('similar suggestions while typing: titles, aliases, closed entries; voting from the suggestion', async ({ page, servers, api }) => {
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  const title = panel(page).getByLabel('In a few words')
+  const title = panel(page).getByLabel('Title', { exact: true })
   const sim = panel(page).locator('.sim')
   await expect(sim).toBeHidden()
   await title.fill('dark mod')
@@ -641,18 +683,18 @@ test('similar suggestions while typing: titles, aliases, closed entries; voting 
   await page.evaluate(() => ArghBox.close())
   await page.reload()
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  await panel(page).getByLabel('In a few words').fill('zoom feature')
+  await panel(page).getByLabel('Title', { exact: true }).fill('zoom feature')
   await expect(sim.locator('.it')).toHaveCount(3)
 })
 
-test('"Your arghs": pending, published, merged (opens the target), rejected with a friendly reason', async ({ page, servers, api }) => {
+test('"Your posts": pending, published, merged (opens the target), rejected with a friendly reason', async ({ page, servers, api }) => {
   api.set({ moderation: 'pending' })
   await load(page, servers)
   const addOne = async (title) => {
     await page.evaluate(() => ArghBox.open({ view: 'add' }))
-    await panel(page).getByLabel('In a few words').fill(title)
-    await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-    await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+    await panel(page).getByLabel('Title', { exact: true }).fill(title)
+    await panel(page).getByRole('button', { name: 'Send idea' }).click()
+    await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
     await page.evaluate(() => ArghBox.close())
   }
   await addOne('Spammy looking thing')
@@ -668,7 +710,7 @@ test('"Your arghs": pending, published, merged (opens the target), rejected with
   await page.reload()
   await openDialog(page)
   const mine = panel(page).locator('.mine')
-  await expect(mine.locator('summary')).toHaveText('Your arghs (4)')
+  await expect(mine.locator('summary')).toHaveText('Your posts (4)')
   await expect(mine).not.toHaveAttribute('open', '') // more than 3: collapsed
   await mine.locator('summary').click()
   const row = (t) => mine.locator('li', { hasText: t })
@@ -685,15 +727,15 @@ test('"Your arghs": pending, published, merged (opens the target), rejected with
   // published entries are not in the list while pending: open it via its link
 })
 
-test('"Your arghs": every reject reason has friendly words', async ({ page, servers, api }) => {
+test('"Your posts": every reject reason has friendly words', async ({ page, servers, api }) => {
   await load(page, servers)
   const reasons = { spam: 'it looked like spam', off_topic: 'it was not about this site', test: 'it looked like a test', unclear: 'we could not tell what it was about', abuse: 'it broke the house rules' }
   const keys = Object.keys(reasons)
   for (const k of keys) {
     await page.evaluate(() => ArghBox.open({ view: 'add' }))
-    await panel(page).getByLabel('In a few words').fill('Entry for ' + k)
-    await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-    await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+    await panel(page).getByLabel('Title', { exact: true }).fill('Entry for ' + k)
+    await panel(page).getByRole('button', { name: 'Send idea' }).click()
+    await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
     await page.evaluate(() => ArghBox.close())
   }
   const receipts = JSON.parse(await page.evaluate(() => localStorage.getItem('arghbox:receipts')))
@@ -762,7 +804,7 @@ test('pass_expired: a new pass is fetched and the request retried once; pass_inv
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true')
   expect(api.requests('session').length).toBe(2)
   expect(api.requests('vote').map((r) => r.body.pass)).toEqual(['pass-1', 'pass-2'])
-  expect(await page.evaluate(() => window.__turnstileCalls.reset)).toBeGreaterThan(0) // Turnstile was reset for the new token
+  expect(await page.evaluate(() => window.__turnstileCalls.render)).toBe(2) // a fresh widget for the new token
   await expect(panel(page).locator('.banner')).toBeHidden()
 
   api.failNext('vote', 'pass_invalid', { times: 5 })
@@ -786,7 +828,7 @@ test('server down, HTML error page, slow server, list failure with retry', async
   await expect(panel(page).locator('.empty')).toContainText(err('server_error'))
   api.set({ down: false, slowMs: 700 })
   await panel(page).getByRole('button', { name: 'Try again' }).click()
-  await expect(panel(page)).toContainText('Opening the box...')
+  await expect(panel(page)).toContainText('Loading...')
   await expect(card(page, 'Dark mode')).toBeVisible()
   // slow vote: busy state, then done
   const btn = voteBtn(page, 'Dark mode')
@@ -818,10 +860,10 @@ test('local preview: on a local host with no box, sample entries, a note and wor
   await btn.click()
   await expect(btn).toHaveAttribute('aria-pressed', 'true')
   await expect(btn).toHaveAttribute('aria-busy', 'false')
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Preview entry from a test')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is up.')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Preview entry from a test')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, it is listed.')
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
   await expect(card(page, 'Preview entry from a test')).toBeVisible()
 
@@ -854,11 +896,11 @@ test('Turnstile blocked: the list still works, voting and adding show a friendly
   await expect(panel(page).locator('.banner')).toHaveText(err('turnstile_unavailable'))
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'false')
   await expect(card(page, 'Keyboard shortcuts')).toBeVisible()
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Something worth saying')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Something worth saying')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('.banner')).toHaveText(err('turnstile_unavailable'))
-  await expect(panel(page).getByRole('button', { name: 'Drop it in the box' })).toBeEnabled()
+  await expect(panel(page).getByRole('button', { name: 'Send idea' })).toBeEnabled()
 })
 
 test('no Turnstile site key: friendly "not set up" message', async ({ page, servers, api }) => {
@@ -880,7 +922,7 @@ test('dialog semantics, focus trap, Esc, backdrop and focus return', async ({ pa
   await expect(dlg).toHaveAttribute('role', 'dialog')
   await expect(dlg).toHaveAttribute('aria-modal', 'true')
   await expect(dlg).toHaveAttribute('aria-labelledby', 'ab-title')
-  await expect(dlg.locator('#ab-title')).toHaveText('Argh? Tell us.')
+  await expect(dlg.locator('#ab-title')).toHaveText('Ideas, bugs and questions')
   await expect(page.locator('#arghbox-root .card').first()).toBeVisible()
   const insideDialog = () => page.evaluate(() => {
     const a = document.getElementById('arghbox-root').shadowRoot.activeElement
@@ -918,7 +960,7 @@ test('a text selection dragged out of a field onto the backdrop does not close t
   test.skip(isPhone(info), 'phones show a full-screen sheet with no backdrop')
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  const title = panel(page).getByLabel('In a few words')
+  const title = panel(page).getByLabel('Title', { exact: true })
   const body = panel(page).getByLabel('Details (optional)')
   await title.fill('test')
   await body.fill('select me')
@@ -947,8 +989,8 @@ test('a text selection dragged out of a field onto the backdrop does not close t
 test('an unsent draft survives an accidental close: the tab reopens the form; Enter in the title goes on to the details, Ctrl+Enter sends', async ({ page, servers, api }) => {
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  const title = panel(page).getByLabel('In a few words')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  const title = panel(page).getByLabel('Title', { exact: true })
   await title.fill('Export to CSV')
   await title.press('Enter')
   await expect(panel(page).getByLabel('Details (optional)')).toBeFocused()
@@ -959,22 +1001,22 @@ test('an unsent draft survives an accidental close: the tab reopens the form; En
   await page.keyboard.press('Escape')
   await expect(panel(page)).toHaveCount(0)
   await tab(page).click()
-  await expect(panel(page).getByLabel('In a few words')).toHaveValue('Export to CSV')
+  await expect(panel(page).getByLabel('Title', { exact: true })).toHaveValue('Export to CSV')
   await expect(panel(page).getByLabel('Details (optional)')).toHaveValue('From the report page.')
   expect(api.requests('add').length).toBe(0)
   await page.keyboard.press('Control+Enter')
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
   expect(api.last('add')).toMatchObject({ title: 'Export to CSV', body: 'From the report page.' })
   await page.keyboard.press('Escape')
   await tab(page).click() // sent: the tab opens the list again
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
 })
 
 test('focus is trapped in the add form and the detail view too', async ({ page, servers }, info) => {
   test.skip(info.project.name === 'webkit-phone', WEBKIT_TAB)
   await load(page, servers)
   await page.evaluate(() => ArghBox.open({ view: 'add' }))
-  await expect(panel(page).getByLabel('In a few words')).toBeFocused()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeFocused()
   for (let i = 0; i < 25; i++) {
     await page.keyboard.press('Tab')
     expect(await page.evaluate(() => !!document.getElementById('arghbox-root').shadowRoot.activeElement?.closest('.panel'))).toBe(true)
@@ -1003,7 +1045,7 @@ test('opening does not scroll or restyle the host page, adds no layout shift and
   await page.keyboard.press('Escape')
   expect(await snap()).toEqual(before)
   const kids = await page.evaluate(() => [...document.body.children].map((e) => e.id || e.tagName).filter((x) => !['host-header', 'top'].includes(x)))
-  expect(kids.filter((x) => x !== 'SCRIPT').sort()).toEqual(['arghbox-root', 'arghbox-turnstile'])
+  expect(kids.filter((x) => x !== 'SCRIPT').sort()).toEqual(['arghbox-root']) // the Turnstile box lives inside the root, and only during a challenge
   const after = await page.evaluate(() => Object.getOwnPropertyNames(window))
   const added = after.filter((k) => !bare.includes(k) && !k.startsWith('__ev') && k !== '__cls')
   expect(added.sort()).toEqual(['ArghBox', '__arghboxApp', '__turnstileCalls', '__turnstileLastRender', 'turnstile'].sort()) // the last three belong to the Turnstile stub
@@ -1151,21 +1193,22 @@ test('hosts restyle the tab and the dialog with --arghbox-* custom properties; d
   expect((await tabStyle()).bg).toBe(before)
 })
 
-test('copy: the list and the add form say what the box is for and that no account is needed, in both tones', async ({ page, servers }) => {
+test('copy: plain words that name ideas, bugs and questions, and say no account is needed, in both tones', async ({ page, servers }) => {
   const sub = () => panel(page).locator('.sub')
-  await load(page, servers)
-  await openDialog(page)
-  await expect(sub()).toHaveText(EN['dialog.subtitle.funny'].replace('{site}', 'Demo Site'))
-  await expect(sub()).toContainText('No account needed')
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await expect(sub()).toHaveText(EN['add.subtitle.funny'])
-  await load(page, servers, { 'data-tone': 'neutral' })
-  await openDialog(page)
-  await expect(panel(page).locator('h2')).toHaveText('Send feedback')
-  await expect(sub()).toHaveText(EN['dialog.subtitle.neutral'].replace('{site}', 'Demo Site'))
-  await expect(sub()).toContainText('No account needed')
-  await panel(page).getByRole('button', { name: 'Add feedback' }).click()
-  await expect(sub()).toHaveText(EN['add.subtitle.neutral'])
+  for (const tone of ['funny', 'neutral']) {
+    await load(page, servers, { 'data-tone': tone })
+    await openDialog(page)
+    await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
+    await expect(sub()).toHaveText('Suggest an idea, report a bug or ask a question about Demo Site. No account needed.')
+    await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+    await expect(sub()).toHaveText(EN['add.subtitle'])
+    for (const [type, title, send] of [['Idea', 'Suggest an idea', 'Send idea'], ['Bug', 'Report a bug', 'Send bug report'], ['Question', 'Ask a question', 'Send question']]) {
+      await panel(page).getByLabel(type, { exact: true }).check()
+      await expect(panel(page).locator('h2')).toHaveText(title)
+      await expect(panel(page).locator('form button[type=submit]')).toHaveText(send)
+    }
+    await expect(panel(page)).not.toContainText(/\bargh(?!box)/i)
+  }
 })
 
 // ---------------------------------------------------------------- variants
@@ -1204,12 +1247,12 @@ test('events: ready, open, add, vote, close, dismiss fire with no visitor text i
   await openDialog(page)
   await voteBtn(page, 'Dark mode').click()
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true')
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   await panel(page).getByLabel('Question').check()
-  await panel(page).getByLabel('In a few words').fill('How do I export everything?')
+  await panel(page).getByLabel('Title', { exact: true }).fill('How do I export everything?')
   await panel(page).getByLabel('Details (optional)').fill('private words here')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await panel(page).getByRole('button', { name: 'Send question' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
   await page.keyboard.press('Escape')
   await page.locator('#arghbox-root .x').click()
   const ev = await events(page)
@@ -1223,11 +1266,11 @@ test('language: data-lang falls back to English when no translation exists; html
   await page.goto(hostUrl(servers, 'plain', { htmllang: 'pl' }))
   await expect(tab(page)).toHaveText('Feedback')
   await openDialog(page)
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await page.evaluate(() => ArghBox.close())
   await load(page, servers, { 'data-lang': 'de-AT' })
   await openDialog(page)
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
 })
 
 test('credit link: shown by default, hidden by data-credit=off and by the server', async ({ page, servers, api }) => {
@@ -1235,7 +1278,7 @@ test('credit link: shown by default, hidden by data-credit=off and by the server
   await openDialog(page)
   const link = panel(page).getByRole('link', { name: 'Powered by ArghBox' })
   await expect(link).toHaveAttribute('href', 'https://arghbox.com/')
-  await expect(link.locator('svg.mk path')).toHaveCount(1) // the ArghBox mark (the pixel box) next to the words
+  await expect(link.locator('svg.mk path')).toHaveCount(4) // the ArghBox mascot in its colours (lid, lid shadow, front, ink) next to the words
   await expect(link).toHaveAttribute('rel', 'noopener')
   await expect(link).toHaveAttribute('target', '_blank')
   await load(page, servers, { 'data-credit': 'off' })
@@ -1268,7 +1311,7 @@ test('desktop: ~420px panel on the tab side; phone: full-screen sheet with large
       expect(b.height, sel).toBeGreaterThanOrEqual(44)
     }
     expect((await panel(page).locator('.vote').first().boundingBox()).width).toBeGreaterThanOrEqual(44)
-    await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+    await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
     for (const sel of ['#f-title', '#f-body']) expect(await panel(page).locator(sel).evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px')
     expect(await panel(page).locator('.ty span').first().boundingBox().then((b) => b.height)).toBeGreaterThanOrEqual(44)
   } else {
@@ -1298,7 +1341,7 @@ for (const scheme of ['light', 'dark']) {
     await expect(tab(page)).toBeVisible()
     await shot('tab')
     await openDialog(page)
-    await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+    await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
     await shot('list')
     await panel(page).locator('.ch').click()
     await expect(panel(page).locator('.ch')).toHaveAttribute('aria-expanded', 'true')
@@ -1307,11 +1350,11 @@ for (const scheme of ['light', 'dark']) {
     await expect(panel(page).locator('h2')).toHaveText('Dark mode')
     await shot('detail')
     await panel(page).getByRole('button', { name: 'Back' }).click()
-    await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-    await panel(page).getByLabel('In a few words').fill('dark mod')
+    await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+    await panel(page).getByLabel('Title', { exact: true }).fill('dark mod')
     await expect(panel(page).locator('.sim')).toBeVisible()
     await shot('add')
-    await panel(page).getByLabel('In a few words').fill('a 3d globe')
+    await panel(page).getByLabel('Title', { exact: true }).fill('a 3d globe')
     await expect(panel(page).locator('.sim')).toContainText('3D globe view')
     await shot('add-closed-similar')
   })
@@ -1326,7 +1369,7 @@ test('credit: a slow list answer with credit:false still removes the footer link
   await expect(panel(page).getByRole('link', { name: 'Powered by ArghBox' })).toBeVisible() // before the answer: the default
   await expect(card(page, 'Dark mode')).toBeVisible({ timeout: 8000 })
   await expect(panel(page).getByRole('link', { name: 'Powered by ArghBox' })).toHaveCount(0)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   await expect(panel(page).getByRole('link', { name: 'Powered by ArghBox' })).toHaveCount(0)
 })
 
@@ -1334,11 +1377,11 @@ test('a fast human is never silently dropped as a robot: the form waits out the 
   api.set({ minFillMs: 2500 })
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Quick typist here')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Quick typist here')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).getByRole('button', { name: 'Sending...' })).toBeDisabled()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
   expect(api.last('add').elapsed_ms).toBeGreaterThanOrEqual(2500)
   expect(api.entries.some((e) => e.title === 'Quick typist here')).toBe(true) // really stored, not a fake success
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
@@ -1351,7 +1394,7 @@ test('a hung server ends in the "cannot reach" message with a working retry, not
   await page.clock.install()
   await load(page, servers)
   await tab(page).click()
-  await expect(panel(page)).toContainText('Opening the box...')
+  await expect(panel(page)).toContainText('Loading...')
   await page.clock.runFor(16000)
   await expect(panel(page).locator('.empty')).toContainText(err('network'))
   api.set({ slowMs: 0 })
@@ -1433,15 +1476,15 @@ test('the tab and the dialog sit above a host cookie banner', async ({ page, ser
   expect(await hit(vp.width / 2, vp.height - 10)).toBe('arghbox-root') // the banner is covered by the overlay
 })
 
-test('"Your arghs": a very long word wraps, owner comments show in full, RTL text aligns right', async ({ page, servers, api }) => {
+test('"Your posts": a very long word wraps, owner comments show in full, RTL text aligns right', async ({ page, servers, api }) => {
   api.set({ moderation: 'pending' })
   await load(page, servers)
   const long = 'W'.repeat(110)
   const addOne = async (title) => {
     await page.evaluate(() => ArghBox.open({ view: 'add' }))
-    await panel(page).getByLabel('In a few words').fill(title)
-    await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-    await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+    await panel(page).getByLabel('Title', { exact: true }).fill(title)
+    await panel(page).getByRole('button', { name: 'Send idea' }).click()
+    await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
     await page.evaluate(() => ArghBox.close())
   }
   await addOne(long)
@@ -1474,8 +1517,8 @@ test('RTL titles and bodies get direction auto in the list, the detail and the f
   expect(await dirOf(panel(page).locator('.body'))).toBe('rtl')
   expect(await dirOf(panel(page).locator('h2'))).toBe('rtl')
   await panel(page).getByRole('button', { name: 'Back' }).click()
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('مرحبا بكم')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('مرحبا بكم')
   expect(await dirOf(panel(page).locator('#f-title'))).toBe('rtl')
 })
 
@@ -1495,13 +1538,13 @@ test('HTML and script in titles, bodies and owner comments show as text everywhe
 test('add form: more than 2 links is explained before sending, and nothing is sent', async ({ page, servers, api }) => {
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Links http://a.example http://b.example')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Links http://a.example http://b.example')
   await panel(page).getByLabel('Details (optional)').fill('and www.c.example too')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('#e-title')).toHaveText(EN['err.links'].replace('{n}', '2'))
-  await expect(panel(page).getByLabel('In a few words')).toHaveAttribute('aria-invalid', 'true')
-  await expect(panel(page).getByLabel('In a few words')).toBeFocused()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeFocused()
   expect(api.requests('add').length).toBe(0)
 })
 
@@ -1509,7 +1552,7 @@ test('Turnstile blocked: the add form says so on arrival, before the visitor typ
   await page.route(CF, (route) => route.abort())
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   await expect(panel(page).locator('.banner')).toHaveText(err('turnstile_unavailable'))
 })
 
@@ -1521,7 +1564,7 @@ test('i18n file fails to load: the fallback dialog offers a retry that works', a
   await expect(panel(page)).toContainText('Could not load')
   block = false
   await panel(page).getByRole('button', { name: 'Try again' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.')
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions')
   await expect(card(page, 'Dark mode')).toBeVisible()
 })
 
@@ -1557,14 +1600,14 @@ test('a host accent that is too light is darkened until white button text passes
     await page.emulateMedia({ colorScheme: scheme })
     await load(page, servers, { 'data-accent': '#ffb199' })
     await openDialog(page)
-    expect(await contrast(panel(page).getByRole('button', { name: 'Add your argh' }))).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(panel(page).getByRole('button', { name: 'Add an idea, bug or question' }))).toBeGreaterThanOrEqual(4.5)
     await panel(page).locator('.chip').first().click()
     expect(await contrast(panel(page).locator('.chip[aria-pressed=true]'))).toBeGreaterThanOrEqual(4.5)
   }
   await page.emulateMedia({ colorScheme: 'light' })
   await load(page, servers) // the brand colour is left as designed
   await openDialog(page)
-  const bg = await panel(page).getByRole('button', { name: 'Add your argh' }).evaluate((el) => getComputedStyle(el).backgroundColor)
+  const bg = await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).evaluate((el) => getComputedStyle(el).backgroundColor)
   expect(bg).toBe(await page.locator('#arghbox-root .tw').evaluate((el) => getComputedStyle(el).backgroundColor))
 })
 
@@ -1583,10 +1626,10 @@ test('phone: tag chips scroll sideways in one row so the list starts above the f
 test('thanks view: a check mark, centred text, and the same two buttons', async ({ page, servers }) => {
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('A thankful idea')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('A thankful idea')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.')
   await expect(panel(page).locator('.thx .ok')).toBeVisible()
   await expect(panel(page).locator('.thx .ok')).toHaveAttribute('aria-hidden', 'true')
   await expect(panel(page).getByRole('button', { name: 'Back to the list' })).toBeVisible()
@@ -1613,7 +1656,7 @@ test('slow network: the empty sheet shows a spinner (no words yet) until the lan
   await tab(page).click()
   await expect(panel(page)).toHaveAttribute('aria-busy', 'true')
   expect(await panel(page).evaluate((el) => getComputedStyle(el, '::after').content)).not.toBe('none')
-  await expect(panel(page).locator('h2')).toHaveText('Argh? Tell us.', { timeout: 8000 })
+  await expect(panel(page).locator('h2')).toHaveText('Ideas, bugs and questions', { timeout: 8000 })
   expect(await panel(page).evaluate((el) => getComputedStyle(el, '::after').content)).toBe('none')
 })
 
@@ -1676,10 +1719,10 @@ test('strict CSP host (no inline script or style, same-origin and Turnstile only
   await expect(card(page, 'Dark mode')).toBeVisible()
   await voteBtn(page, 'Dark mode').click()
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true')
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('Strict hosts deserve feedback too')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('Strict hosts deserve feedback too')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
   expect(api.requests('add').length).toBe(1)
   expect(await page.evaluate(() => window.__csp)).toEqual([])
   expect(errs).toEqual([])
@@ -1790,20 +1833,19 @@ test('the host swaps its <body>: the tab and the dialog come back, the API keeps
   await expect(page.locator('#arghbox-root')).toHaveCount(1)
 })
 
-test('the host swaps its <body> while the dialog is open: the dialog survives and Turnstile gets a fresh box', async ({ page, servers, api }) => {
+test('the host swaps its <body> while the dialog is open: the dialog survives and the next challenge gets a fresh widget', async ({ page, servers, api }) => {
   await load(page, servers)
   await openDialog(page)
   await voteBtn(page, 'Dark mode').click()
   await expect(voteBtn(page, 'Dark mode')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('#arghbox-turnstile')).toHaveCount(1)
+  await expect(page.locator('#arghbox-turnstile')).toHaveCount(0) // removed once the pass came
   await page.evaluate(() => { document.body.innerHTML = '<p>swapped</p>' })
-  await expect(page.locator('#arghbox-turnstile')).toHaveCount(0) // gone with the body
   await expect(panel(page)).toBeVisible() // the dialog lives in the re-attached root
   api.expirePassOnce() // the next vote needs a new challenge
   await voteBtn(page, 'Keyboard shortcuts').click()
   await expect(voteBtn(page, 'Keyboard shortcuts')).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('#arghbox-turnstile')).toHaveCount(1)
   expect(await page.evaluate(() => window.__turnstileCalls.render)).toBe(2)
+  await expect(page.locator('#arghbox-turnstile')).toHaveCount(0)
 })
 
 test('Turnstile gets action "arghbox" on render', async ({ page, servers }) => {
@@ -1815,11 +1857,11 @@ test('Turnstile gets action "arghbox" on render', async ({ page, servers }) => {
 })
 
 const HOLDING_STUB = `
-  window.__ts = { renders: 0, resets: 0, executes: 0 };
+  window.__ts = { renders: 0, resets: 0, executes: 0, removes: 0 };
   window.turnstile = {
     render: function (el, o) { window.__o = o; window.__ts.renders++; return 'w1'; },
-    execute: function () { window.__ts.executes++; if (window.__auto) { var o = window.__o; Promise.resolve().then(function () { o.callback('stub-token-' + window.__ts.executes); }); } else { window.__o['before-interactive-callback'](); } },
-    reset: function () { window.__ts.resets++; }, remove: function () {}, getResponse: function () {}
+    execute: function () { window.__ts.executes++; if (window.__auto) { var o = window.__o; Promise.resolve().then(function () { o.callback('stub-token-' + window.__ts.executes); }); } else if (!window.__quiet) { window.__o['before-interactive-callback'](); } },
+    reset: function () { window.__ts.resets++; }, remove: function () { window.__ts.removes++; }, getResponse: function () {}
   };`
 
 test('closing the dialog during a Turnstile challenge hides it for good: a late callback never shows it again', async ({ page, servers }) => {
@@ -1832,7 +1874,7 @@ test('closing the dialog during a Turnstile challenge hides it for good: a late 
   await page.keyboard.press('Escape')
   await expect(panel(page)).toHaveCount(0)
   await expect(box).toBeHidden()
-  expect(await page.evaluate(() => window.__ts.resets)).toBe(1) // the widget was reset, not left running
+  await expect.poll(() => page.evaluate(() => window.__ts.removes)).toBe(1) // the widget was removed, not left running
   await page.evaluate(() => window.__o['before-interactive-callback']()) // Cloudflare calls late
   await expect(box).toBeHidden()
   await page.evaluate(() => window.__o.callback('stub-token-late'))
@@ -1932,56 +1974,51 @@ test('a language with no loader label falls back to the English label', async ({
 
 // ---------------------------------------------------------------- the page recorded with an entry
 
-const addFormLine = (page) => panel(page).locator('.ctx')
 async function openAddForm(page) {
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await expect(addFormLine(page)).toBeVisible()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await expect(panel(page).getByLabel('Title', { exact: true })).toBeVisible()
+}
+
+// The form shows no page line; these tests read what the add request carries.
+async function sendIdea(page, title) {
+  await openAddForm(page)
+  await panel(page).getByLabel('Title', { exact: true }).fill(title)
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
 }
 
 test('data-page records a fixed path instead of the real one, and wins over the hook', async ({ page, servers, api }) => {
   await page.addInitScript(() => { window.ArghBoxConfig = { redactPage: () => '/hooked' } })
   await load(page, servers, { 'data-page': '/account/reset' })
-  await openAddForm(page)
-  await expect(addFormLine(page)).toContainText('page /account/reset,')
-  await panel(page).getByLabel('In a few words').fill('Fixed path please')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await sendIdea(page, 'Fixed path please')
   expect(api.last('add').context.page).toBe('/account/reset')
 })
 
-test('redactPage can cut a token out of the path; the form shows what is sent', async ({ page, servers, api }) => {
+test('redactPage can cut a token out of the path', async ({ page, servers, api }) => {
   await page.addInitScript(() => { window.ArghBoxConfig = { redactPage: (p) => p.split('.')[0] + '/:token' } })
   await load(page, servers)
-  await openAddForm(page)
-  await expect(addFormLine(page)).toContainText('page /plain/:token,')
-  await panel(page).getByLabel('In a few words').fill('Redacted path please')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await sendIdea(page, 'Redacted path please')
   expect(api.last('add').context.page).toBe('/plain/:token')
 })
 
 test('redactPage returning an empty string records no page at all', async ({ page, servers, api }) => {
   await page.addInitScript(() => { window.ArghBoxConfig = { redactPage: () => '' } })
   await load(page, servers)
-  await openAddForm(page)
-  await expect(addFormLine(page)).toContainText('page (not shared),')
-  await panel(page).getByLabel('In a few words').fill('No page recorded')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await sendIdea(page, 'No page recorded')
   expect('page' in api.last('add').context).toBe(false)
 })
 
-test('a redactPage that throws or returns a non-path fails closed: no page, never the real one', async ({ page, servers }) => {
+test('a redactPage that throws or returns a non-path fails closed: no page, never the real one', async ({ page, servers, api }) => {
   await page.addInitScript(() => { window.ArghBoxConfig = { redactPage: () => { throw new Error('boom') } } })
   await load(page, servers)
-  await openAddForm(page)
-  await expect(addFormLine(page)).toContainText('page (not shared),')
-  await expect(addFormLine(page)).not.toContainText('plain')
+  await sendIdea(page, 'Hook that throws')
+  expect('page' in api.last('add').context).toBe(false)
+  expect(JSON.stringify(api.last('add').context)).not.toContain('plain')
   await page.addInitScript(() => { window.ArghBoxConfig = { redactPage: () => 42 } })
   await load(page, servers)
-  await openAddForm(page)
-  await expect(addFormLine(page)).toContainText('page (not shared),')
+  await sendIdea(page, 'Hook that returns a number')
+  expect('page' in api.last('add').context).toBe(false)
 })
 
 // ---------------------------------------------------------------- server hiccups and friendly errors
@@ -2060,11 +2097,11 @@ test('copy: "Posted on" for every kind, a kind thanks line, punctuated suggestio
   await expect(panel(page).locator('.meta').first()).toContainText('Posted on')
   await expect(panel(page)).not.toContainText('Asked on')
   await panel(page).getByRole('button', { name: 'Back' }).click()
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('dark mod')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('dark mod')
   await expect(panel(page).locator('.sim h3')).toHaveText('Is it one of these? Vote for it instead.')
-  await panel(page).getByLabel('In a few words').fill('A kindly thanked idea')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('A kindly thanked idea')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('.thx p')).toHaveText('It shows up in the list once someone has had a look. Thanks for helping us improve Demo Site!')
   await expect(panel(page)).not.toContainText('Spam')
 })
@@ -2265,18 +2302,18 @@ async function auditEveryView(page, servers, params) {
   await expect(panel(page).locator('h2')).toHaveText('Dark mode')
   found.push(...(await axeViolations(page, 'detail')))
   await panel(page).getByRole('button', { name: 'Back' }).click()
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   found.push(...(await axeViolations(page, 'add, empty')))
-  await panel(page).getByLabel('In a few words').fill('abc')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('abc')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(panel(page).locator('#e-title')).toBeVisible()
   found.push(...(await axeViolations(page, 'add, with a field error')))
-  await panel(page).getByLabel('In a few words').fill('dark mod')
+  await panel(page).getByLabel('Title', { exact: true }).fill('dark mod')
   await expect(panel(page).locator('.sim')).toBeVisible()
   found.push(...(await axeViolations(page, 'add, with suggestions')))
-  await panel(page).getByLabel('In a few words').fill('An idea that passes the audit')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
+  await panel(page).getByLabel('Title', { exact: true }).fill('An idea that passes the audit')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
   found.push(...(await axeViolations(page, 'thanks')))
   await panel(page).getByRole('button', { name: 'Back to the list' }).click()
   await expect(panel(page).locator('.mine')).toBeVisible()
@@ -2302,7 +2339,7 @@ test('axe-core: a very light, a very dark and a neon accent still pass (tab, but
       const found = await axeViolations(page, `${scheme} ${accent} closed`)
       await openDialog(page)
       found.push(...(await axeViolations(page, `${scheme} ${accent} list`)))
-      await panel(page).getByRole('button', { name: 'Add your argh' }).click()
+      await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
       found.push(...(await axeViolations(page, `${scheme} ${accent} add`)))
       expect(found).toEqual([])
     }
@@ -2401,7 +2438,7 @@ test('errors go to the assertive alert region, successes to the polite status re
   await expect(alert).toHaveText(err('server_error'))
   await expect(status).toHaveText('')
   await voteBtn(page, 'Dark mode').click() // a successful vote clears the error and speaks politely
-  await expect(status).toHaveText('Counted. 15 people said argh about this.')
+  await expect(status).toHaveText('Counted. 15 votes')
   await expect(alert).toHaveText('')
   await expect(panel(page).locator('.banner')).toBeHidden()
 })
@@ -2410,25 +2447,24 @@ test('add form: a field error and the success are announced', async ({ page, ser
   await load(page, servers)
   await openDialog(page)
   const alert = panel(page).locator('[role=alert]')
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await panel(page).getByLabel('In a few words').fill('abc')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
+  await panel(page).getByLabel('Title', { exact: true }).fill('abc')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
   await expect(alert).toHaveText(EN['err.title_short'])
-  await panel(page).getByLabel('In a few words').fill('A well announced idea')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
-  await expect(panel(page).locator('[role=status]')).toHaveText('Your argh is in the box.')
+  await panel(page).getByLabel('Title', { exact: true }).fill('A well announced idea')
+  await panel(page).getByRole('button', { name: 'Send idea' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
+  await expect(panel(page).locator('[role=status]')).toHaveText('Thanks, we got it.')
 })
 
-test('the "We send along" line names the language that is sent', async ({ page, servers, api }) => {
+test('the form shows no technical context line, but a bug report still carries page, language and screen size', async ({ page, servers, api }) => {
   await load(page, servers)
   await openDialog(page)
-  await panel(page).getByRole('button', { name: 'Add your argh' }).click()
-  await expect(panel(page).locator('.ctx')).toContainText('page /plain.html, language en,')
+  await panel(page).getByRole('button', { name: 'Add an idea, bug or question' }).click()
   await panel(page).getByLabel('Bug').check()
-  await expect(panel(page).locator('.ctx')).toContainText('page /plain.html, language en,')
-  await panel(page).getByLabel('In a few words').fill('Shows the language it sends')
-  await panel(page).getByRole('button', { name: 'Drop it in the box' }).click()
-  await expect(panel(page).locator('h2')).toHaveText('Your argh is in the box.', { timeout: 8000 })
-  expect(api.last('add').context.lang).toBe('en') // what the line says is what is sent
+  await expect(panel(page).locator('form')).not.toContainText(/language en|page \/|small screen|We send along|attaches/)
+  await panel(page).getByLabel('Title', { exact: true }).fill('Carries the context quietly')
+  await panel(page).getByRole('button', { name: 'Send bug report' }).click()
+  await expect(panel(page).locator('h2')).toHaveText('Thanks, we got it.', { timeout: 8000 })
+  expect(api.last('add').context).toMatchObject({ page: '/plain.html', lang: 'en', screen: expect.stringMatching(/^(small|medium|large)$/) })
 })
