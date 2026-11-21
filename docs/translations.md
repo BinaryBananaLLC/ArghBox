@@ -8,7 +8,7 @@ The widget's text lives in small JSON files, so adding a language needs no code.
 - A file is a flat object of `"key": "text"`. Placeholders in braces, such as `{n}` or `{site}`, are filled in by the widget and must stay exactly as they are.
 - **Plurals** use key suffixes from the Unicode plural categories: `votes.one` and `votes.other`. Languages with more forms add `.few`, `.many`, `.two` or `.zero` (Polish needs `.one`, `.few`, `.many` and `.other`). The widget falls back to `.other`, then to English.
 - **Tone**: many keys come as a pair, `something.funny` and `something.neutral`, picked by the `data-tone` attribute. Translate both, keeping the funny one playful and the neutral one plain.
-- The `_meta` key holds `{"lang": "pl", "name": "Polski", "version": "0.1.2"}`.
+- The `_meta` key holds `{"lang": "pl", "name": "Polski", "version": "0.2.0"}`.
 - The widget picks the language from `data-lang`, otherwise the page's `<html lang>`: an exact match first, then the part before the dash (`pt-BR` falls back to `pt`), otherwise English. Missing keys fall back to English, so a partial translation is fine.
 - The tab label comes from the `tab.label` key and is also listed in the loader (`arghbox.js`), because the loader loads no strings. That is the `LABELS` and `LANGS` block described below.
 

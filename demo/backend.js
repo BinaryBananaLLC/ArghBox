@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.1.2'; // rewritten by tools/set-version.mjs
+  var VERSION = '0.2.0'; // rewritten by tools/set-version.mjs
   var PASSWORD = 'demo';
   var SCHEMA = 1;
   var STATE_KEY = 'arghbox-demo:v1';

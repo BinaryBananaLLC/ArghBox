@@ -1,7 +1,7 @@
-/*! ArghBox 0.1.2 | MIT | arghbox.com */
+/*! ArghBox 0.2.0 | MIT | arghbox.com */
 (function (window, document) {
   'use strict';
-  var VERSION = '0.1.2';
+  var VERSION = '0.2.0';
   /* arghbox:labels:start */
   var LABELS = {"en":"Feedback"};
   /* arghbox:labels:end */

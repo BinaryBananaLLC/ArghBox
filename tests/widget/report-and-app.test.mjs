@@ -75,7 +75,7 @@ test('report errors map to friendly strings (no raw codes)', () => {
 
 // ---- app-page.js
 
-function runAppPage({ search = '', hash = '', src = 'https://x.test/arghbox/app-page.js?v=0.1.2', bridges = {} } = {}) {
+function runAppPage({ search = '', hash = '', src = 'https://x.test/arghbox/app-page.js?v=0.2.0', bridges = {} } = {}) {
   const attrs = {}
   const listeners = {}
   const heading = { textContent: 'Feedback closed' }
@@ -109,7 +109,7 @@ function runAppPage({ search = '', hash = '', src = 'https://x.test/arghbox/app-
 test('app-page.js: valid parameters become loader attributes and the app config', () => {
   const r = runAppPage({ search: '?platform=ios&version=1.2.3&from=/settings&view=add&type=bug&theme=dark&accent=%23336699&lang=pl-PL&tone=neutral' })
   assert.deepEqual(plain(r.win.ArghBoxConfig), { app: { platform: 'ios', version: '1.2.3' } })
-  assert.equal(r.attrs.src, 'arghbox.js?v=0.1.2')
+  assert.equal(r.attrs.src, 'arghbox.js?v=0.2.0')
   assert.equal(r.attrs['data-tab'], 'off')
   assert.equal(r.attrs['data-page'], '/settings')
   assert.equal(r.attrs['data-theme'], 'dark')

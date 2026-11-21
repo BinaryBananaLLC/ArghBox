@@ -1,4 +1,4 @@
-/*! ArghBox 0.1.2 | local preview | MIT | arghbox.com */
+/*! ArghBox 0.2.0 | local preview | MIT | arghbox.com */
 // The local preview (SPEC section 8): the dialog loads this file only on a local dev host (localhost, 127.0.0.1,
 // [::1], *.localhost) when no ArghBox answered its first request (no server, no PHP, no config.php). It answers the
 // widget's API calls in memory with sample entries, so a site can try its integration (where the tab sits, colours,
@@ -59,7 +59,7 @@
     function answer(action, body) {
       if (action === 'list') {
         return {
-          ok: true, site: {}, welcome: note, max_links: 2, version: '0.1.2', turnstile_site_key: '', moderation: 'publish',
+          ok: true, site: {}, welcome: note, max_links: 2, version: '0.2.0', turnstile_site_key: '', moderation: 'publish',
           credit: true, contact: '', app_pass: true, entries: copy(entries), tag_counts: tagCounts(),
           voted: Object.keys(voted).filter(function (id) { return voted[id]; }).map(Number)
         };

@@ -2,4 +2,4 @@
 declare(strict_types=1);
 defined('ARGHBOX_BOOT') || exit;
 
-const ARGHBOX_VERSION = '0.1.2';
+const ARGHBOX_VERSION = '0.2.0';

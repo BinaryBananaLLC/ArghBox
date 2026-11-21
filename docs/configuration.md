@@ -71,7 +71,7 @@ Apps show the board in a WebView with `arghbox/app.html`. It takes URL parameter
 ## Script tag attributes
 
 ```html
-<script src="/arghbox/arghbox.js?v=0.1.2" defer
+<script src="/arghbox/arghbox.js?v=0.2.0" defer
         data-position="left" data-theme="host" data-accent="#2563eb"></script>
 ```
 
@@ -194,7 +194,7 @@ If your URL paths themselves contain secrets (a password-reset token, a magic li
     }
   };
 </script>
-<script src="/arghbox/arghbox.js?v=0.1.2" defer></script>
+<script src="/arghbox/arghbox.js?v=0.2.0" defer></script>
 ```
 
 What the function returns is what is stored. Return `''` to record no page at all.

@@ -169,7 +169,7 @@ Building a mobile app? It can show the board in a WebView with `arghbox/app.html
 Put this before `</body>` (or in the `<head>`, it is deferred) on every page where you want the tab:
 
 ```html
-<script src="/arghbox/arghbox.js?v=0.1.2" defer></script>
+<script src="/arghbox/arghbox.js?v=0.2.0" defer></script>
 ```
 
 Change the `?v=` number when you upgrade, so visitors' browsers fetch the new files. Reload your site and you should see the **Feedback** tab on the right edge. Options for position, theme, colour and language are in [configuration.md](configuration.md).

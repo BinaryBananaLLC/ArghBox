@@ -89,7 +89,7 @@ An Atom 1.0 feed (`application/atom+xml`), cached for 10 minutes: the 50 most re
 | Field | Values |
 |---|---|
 | `ok` | `true` (200) or `false` (503) |
-| `version` | ArghBox version, for example `"0.1.2"` |
+| `version` | ArghBox version, for example `"0.2.0"` |
 | `php` | PHP major.minor only, for example `"8.2"` |
 | `sqlite` | SQLite version, or `null` when `pdo_sqlite` is not loaded |
 | `config` | `"found"` or `"missing"` |
